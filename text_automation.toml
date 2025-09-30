@@ -1,0 +1,107 @@
+# Runtime configuration for text-automation
+
+env = "dev"
+
+[direct_inquiry]
+# OAuth token storage for Gmail API
+token_path = "Legacy Files to Migrate and Implement/DirectToInquiryPackage/token.json"
+# Vegas center IDs (special business-hours handling)
+vegas_ids = [6, 11, 15, 16, 60]
+
+# Franchises (id, name, url, director, email, timezone)
+[[franchises]]
+id = 1
+name = "Test"
+url = "https://tutoringclub.com/test/"
+director = "Daniel"
+email = "bmillares@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 57
+name = "Gilbert"
+url = "https://tutoringclub.com/gilbertaz/"
+director = "Ryan"
+email = "gilbertaz@tutoringclub.com"
+timezone = "America/Phoenix"
+
+[[franchises]]
+id = 24
+name = "North Fresno"
+url = "https://tutoringclub.com/gilbertaz/"
+director = "Ryan"
+email = "fresnoca@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 19
+name = "Tutoring Club of Tustin"
+url = "https://tutoringclub.com/tustinca/"
+director = "Tim"
+email = "tustinca@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 8
+name = "Fountain Valley CA"
+url = "https://tutoringclub.com/fountain-valley-ca/"
+director = "Huy"
+email = "fountainvalleyca@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 20
+name = "Clovis"
+url = "https://tutoringclub.com/clovisca/"
+director = "Katie"
+email = "clovisca@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 87
+name = "Downey"
+url = "https://tutoringclub.com/downeyca/"
+director = "David"
+email = "downeyca@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 15
+name = "North Las Vegas"
+url = "https://tutoringclub.com/northlasvegasnv/"
+director = "Jessica"
+email = "northlasvegasnv@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 60
+name = "Centennial"
+url = "https://tutoringclub.com/centennialnv/"
+director = "Jessica"
+email = "centennialnv@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 11
+name = "Green Valley"
+url = "https://tutoringclub.com/hendersonnv/"
+director = "Shannon"
+email = "hendersonnv@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 6
+name = "Anthem"
+url = "https://tutoringclub.com/anthemnv/"
+director = "Shannon"
+email = "anthemnv@tutoringclub.com"
+timezone = "America/Los_Angeles"
+
+[[franchises]]
+id = 16
+name = "Rhodes Ranch"
+url = "https://tutoringclub.com/rhodesranchnv/"
+director = "Shannon"
+email = "rhodesranchnv@tutoringclub.com"
+timezone = "America/Los_Angeles"
+

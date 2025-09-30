@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "text-automation"
+version = "0.1.0"
+description = "Modular text automation toolkit"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "Unknown", email = "" }
+]
+license = { text = "Proprietary" }
+keywords = ["automation", "text", "cli"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Environment :: Console",
+  "License :: Other/Proprietary License",
+]
+dependencies = [
+  "pandas>=2.0",
+  "SQLAlchemy>=2.0",
+  "pyodbc>=5.0",
+  "PyPDF2>=3.0",
+  "requests>=2.31",
+  "beautifulsoup4>=4.12",
+  "google-api-python-client>=2.131",
+  "google-auth-oauthlib>=1.2",
+  "tzdata>=2024.1",
+]
+
+[project.urls]
+homepage = ""
+repository = ""
+
+[project.scripts]
+text-automation = "text_automation.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/text_automation"]
