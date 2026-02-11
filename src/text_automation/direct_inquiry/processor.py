@@ -37,7 +37,12 @@ def is_phone_blacklisted(phone: str) -> bool:
     if not phone:
         return False
     digits_only = re.sub(r"\D", "", phone)
-    if digits_only and digits_only in EXTRA_BLACKLIST:
+    cfg = load_config()
+    di = cfg.direct_inquiry
+    blacklist = set(EXTRA_BLACKLIST)
+    if di and di.phone_blacklist:
+        blacklist.update(di.phone_blacklist)
+    if digits_only and digits_only in blacklist:
         return True
     m = re.search(r"\d", phone)
     return bool(m and m.group(0) in {"0", "1"})
@@ -60,7 +65,9 @@ def _director_for_fid(fid: int) -> str:
 
 
 def _format_grade_phrase(grade: str) -> str:
-    grade_dict = {
+    cfg = load_config()
+    di = cfg.direct_inquiry
+    grade_dict = di.grade_phrase_map if (di and di.grade_phrase_map) else {
         "Kindergarten": "Kindergartener",
         "1st Grade": "1st grader",
         "2nd Grade": "2nd grader",
@@ -79,7 +86,9 @@ def _format_grade_phrase(grade: str) -> str:
 
 
 def _grade_sql(grade: str) -> str:
-    grade_dict_sql = {
+    cfg = load_config()
+    di = cfg.direct_inquiry
+    grade_dict_sql = di.grade_sql_map if (di and di.grade_sql_map) else {
         "1st Grade": "1st",
         "2nd Grade": "2nd",
         "3rd Grade": "3rd",
@@ -230,13 +239,26 @@ def _process_one(service, msg_id: str, msg, mode: str, dry_run: bool) -> Optiona
         grade_sql=_grade_sql(grade_str),
     )
 
+    header = f"[direct-inquiry] FID={fid_detected} Parent={p_first} {p_last} Student={s_first} {s_last} Phone={phone_str}"
     if dry_run:
         print(f"[dry-run] Would execute SQL for FID {fid_detected} and send Zapier message")
+        # Unconditional Telegram logs for traceability
+        send_message(header + " [dry-run]", LOG_BOT, LOG_CHAT)
+        try:
+            send_message(sql[:3500] + ("\n..." if len(sql) > 3500 else ""), LOG_BOT, LOG_CHAT)
+        except Exception:
+            pass
         return True
 
     # Execute SQL and mark read
     eng = get_engine()
     with eng.begin() as conn:
+        # Log before executing
+        send_message(header, LOG_BOT, LOG_CHAT)
+        try:
+            send_message(sql[:3500] + ("\n..." if len(sql) > 3500 else ""), LOG_BOT, LOG_CHAT)
+        except Exception:
+            pass
         conn.execute(sa_text(sql))
 
     # Zapier (except FID 1)
@@ -248,6 +270,7 @@ def _process_one(service, msg_id: str, msg, mode: str, dry_run: bool) -> Optiona
             franchise_id=fid_detected,
             grade_string=grade_str,
         )
+        send_message(f"[direct-inquiry][ok] {header}", AUTO_BOT or LOG_BOT, AUTO_CHAT or LOG_CHAT)
 
     mark_as_read(service, msg_id)
     return True

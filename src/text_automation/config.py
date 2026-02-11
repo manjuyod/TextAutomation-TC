@@ -14,12 +14,25 @@ class Franchise:
     director: str
     email: str
     timezone: str
+    # Optional, for assessments/meetings flows
+    assessment_form: str = ""
+    payment_form: str = ""
+    address: str = ""
+    assess_group: str = ""  # e.g., "vegas" or "cali"
 
 
 @dataclass(frozen=True)
 class DirectInquiryConfig:
     token_path: Path | None = None
     vegas_ids: tuple[int, ...] = (6, 11, 15, 16, 60)
+    phone_blacklist: tuple[str, ...] = ()
+    grade_phrase_map: dict[str, str] | None = None
+    grade_sql_map: dict[str, str] | None = None
+
+
+@dataclass(frozen=True)
+class StudentIntakeConfig:
+    token_path: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -28,6 +41,7 @@ class Config:
     legacy_root: Path | None = None
     reporting_db: Path | None = None
     direct_inquiry: DirectInquiryConfig | None = None
+    student_intake: StudentIntakeConfig | None = None
     franchises: tuple[Franchise, ...] = ()
 
 
@@ -68,10 +82,26 @@ def load_config(config_file: Path | None = None) -> Config:
     token_path_str = di_cfg.get("token_path")
     token_path = Path(token_path_str) if token_path_str else (root / "Legacy Files to Migrate and Implement/DirectToInquiryPackage/token.json")
     vegas_ids = tuple(di_cfg.get("vegas_ids", [6, 11, 15, 16, 60]))
+    phone_blacklist = tuple(str(x) for x in di_cfg.get("phone_blacklist", []))
+    grade_phrase_map = di_cfg.get("grade_phrase_map") or None
+    grade_sql_map = di_cfg.get("grade_sql_map") or None
     direct_inquiry = DirectInquiryConfig(
         token_path=token_path,
         vegas_ids=vegas_ids,
+        phone_blacklist=phone_blacklist,
+        grade_phrase_map=grade_phrase_map,
+        grade_sql_map=grade_sql_map,
     )
+
+    # Student Intake (separate Gmail token path)
+    si_cfg = data.get("student_intake", {}) if isinstance(data, dict) else {}
+    si_token_path_str = si_cfg.get("token_path")
+    si_token_path = (
+        Path(si_token_path_str)
+        if si_token_path_str
+        else (root / "Legacy Files to Migrate and Implement/StudentAutoToDB/token.json")
+    )
+    student_intake = StudentIntakeConfig(token_path=si_token_path)
 
     # Franchises list
     franchises_list = []
@@ -85,6 +115,10 @@ def load_config(config_file: Path | None = None) -> Config:
                     director=str(obj.get("director", "")),
                     email=str(obj.get("email", "")),
                     timezone=str(obj.get("timezone", "America/Los_Angeles")),
+                    assessment_form=str(obj.get("assessment_form", "")),
+                    payment_form=str(obj.get("payment_form", "")),
+                    address=str(obj.get("address", "")),
+                    assess_group=str(obj.get("assess_group", "")),
                 )
             )
         except Exception:
@@ -112,5 +146,6 @@ def load_config(config_file: Path | None = None) -> Config:
         legacy_root=legacy_path if legacy_path.exists() else None,
         reporting_db=reporting_path if (reporting_path and reporting_path.exists()) else None,
         direct_inquiry=direct_inquiry,
+        student_intake=student_intake,
         franchises=tuple(franchises_list),
     )

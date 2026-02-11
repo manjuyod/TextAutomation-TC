@@ -2,11 +2,52 @@
 
 env = "dev"
 
+[reporting]
+# SQLite database for idempotency caches and lightweight reporting
+database = "src/text_automation/reporting/TextDatabase.db"
+
 [direct_inquiry]
 # OAuth token storage for Gmail API
-token_path = "Legacy Files to Migrate and Implement/DirectToInquiryPackage/token.json"
+token_path = "src/text_automation/direct_inquiry/token.json"
 # Vegas center IDs (special business-hours handling)
 vegas_ids = [6, 11, 15, 16, 60]
+phone_blacklist = ["2499618600", "2563668195", "8852895525", "2206940173", "8557588624", "3454497480"]
+
+[student_intake]
+# Separate Gmail OAuth token path for Student Intake ingestion
+token_path = "src/text_automation/student_auto/token.json"
+
+# Optional grade mappings (override defaults)
+[direct_inquiry.grade_phrase_map]
+Kindergarten = "Kindergartener"
+"1st Grade" = "1st grader"
+"2nd Grade" = "2nd grader"
+"3rd Grade" = "3rd grader"
+"4th Grade" = "4th grader"
+"5th Grade" = "5th grader"
+"6th Grade" = "6th grader"
+"7th Grade" = "7th grader"
+"8th Grade" = "8th grader"
+"9th Grade" = "9th grader"
+"10th Grade" = "10th grader"
+"11th Grade" = "11th grader"
+"12th Grade" = "12th grader"
+
+[direct_inquiry.grade_sql_map]
+"1st Grade" = "1st"
+"2nd Grade" = "2nd"
+"3rd Grade" = "3rd"
+"4th Grade" = "4th"
+"5th Grade" = "5th"
+"6th Grade" = "6th"
+"7th Grade" = "7th"
+"8th Grade" = "8th"
+"9th Grade" = "9th"
+"10th Grade" = "10th"
+"11th Grade" = "11th"
+"12th Grade" = "12th"
+"Middle School" = "6th"
+"High School" = "9th"
 
 # Franchises (id, name, url, director, email, timezone)
 [[franchises]]
@@ -16,6 +57,10 @@ url = "https://tutoringclub.com/test/"
 director = "Daniel"
 email = "bmillares@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/student-intake-form/"
+payment_form = "https://tutoringclub.com/assessment-payment-form/"
+address = "TEST ADDY LOL"
+assess_group = "vegas"
 
 [[franchises]]
 id = 57
@@ -24,14 +69,22 @@ url = "https://tutoringclub.com/gilbertaz/"
 director = "Ryan"
 email = "gilbertaz@tutoringclub.com"
 timezone = "America/Phoenix"
+assessment_form = "https://tutoringclub.com/gilbertaz/student-intake-form/"
+payment_form = "https://tutoringclub.com/gilbertaz/assessment-payment-form/"
+address = "3305 E Williams Field Rd #102, Gilbert, AZ 85295"
+assess_group = "vegas"
 
 [[franchises]]
 id = 24
 name = "North Fresno"
-url = "https://tutoringclub.com/gilbertaz/"
+url = "https://tutoringclub.com/fresnoca/"
 director = "Ryan"
 email = "fresnoca@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/fresnoca/student-intake-form/"
+payment_form = "https://tutoringclub.com/fresnoca/assessment-payment-form/"
+address = "9423 North Fort Washington Road #106 Fresno, CA 93720"
+assess_group = "cali"
 
 [[franchises]]
 id = 19
@@ -40,6 +93,10 @@ url = "https://tutoringclub.com/tustinca/"
 director = "Tim"
 email = "tustinca@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/tustinca/student-intake-form/"
+payment_form = ""
+address = "13721 Newport Avenue #7 Tustin, CA 92780 US"
+assess_group = "cali"
 
 [[franchises]]
 id = 8
@@ -48,6 +105,10 @@ url = "https://tutoringclub.com/fountain-valley-ca/"
 director = "Huy"
 email = "fountainvalleyca@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/fountain-valley-ca/student-intake-form/"
+payment_form = ""
+address = "9985 Ellis Ave, Fountain Valley, CA 92708"
+assess_group = "cali"
 
 [[franchises]]
 id = 20
@@ -56,6 +117,10 @@ url = "https://tutoringclub.com/clovisca/"
 director = "Katie"
 email = "clovisca@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/clovisca/student-intake-form/"
+payment_form = ""
+address = "779 Herndon #105. We are on the northwest corner of Herndon and Clovis right next to the Starbucks."
+assess_group = "cali"
 
 [[franchises]]
 id = 87
@@ -64,6 +129,10 @@ url = "https://tutoringclub.com/downeyca/"
 director = "David"
 email = "downeyca@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/downeyca/student-intake-form/"
+payment_form = ""
+address = "8554 Firestone Blvd, Ste A Downey, CA 90241"
+assess_group = "cali"
 
 [[franchises]]
 id = 15
@@ -72,6 +141,10 @@ url = "https://tutoringclub.com/northlasvegasnv/"
 director = "Jessica"
 email = "northlasvegasnv@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/northlasvegasnv/student-intake-form/"
+payment_form = "https://tutoringclub.com/northlasvegasnv/assessment-payment-form/"
+address = "6120 N Decatur Blvd #102, North Las Vegas, NV 89031"
+assess_group = "vegas"
 
 [[franchises]]
 id = 60
@@ -80,6 +153,10 @@ url = "https://tutoringclub.com/centennialnv/"
 director = "Jessica"
 email = "centennialnv@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/centennialnv/student-intake-form/"
+payment_form = "https://tutoringclub.com/centennialnv/assessment-payment-form/"
+address = "6710 N Hualapai Way Suite 145, Las Vegas, NV 89149"
+assess_group = "vegas"
 
 [[franchises]]
 id = 11
@@ -88,6 +165,10 @@ url = "https://tutoringclub.com/hendersonnv/"
 director = "Shannon"
 email = "hendersonnv@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/hendersonnv/student-intake-form/"
+payment_form = "https://tutoringclub.com/hendersonnv/assessment-payment-form/"
+address = "2213 N Green Valley Pkwy #103, Henderson, NV 89014"
+assess_group = "vegas"
 
 [[franchises]]
 id = 6
@@ -96,6 +177,10 @@ url = "https://tutoringclub.com/anthemnv/"
 director = "Shannon"
 email = "anthemnv@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/anthemnv/student-intake-form/"
+payment_form = "https://tutoringclub.com/anthemnv/assessment-payment-form/"
+address = "11241 S Eastern Ave, Henderson, NV 89052"
+assess_group = "vegas"
 
 [[franchises]]
 id = 16
@@ -104,4 +189,19 @@ url = "https://tutoringclub.com/rhodesranchnv/"
 director = "Shannon"
 email = "rhodesranchnv@tutoringclub.com"
 timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/rhodesranchnv/student-intake-form/"
+payment_form = "https://tutoringclub.com/rhodesranchnv/assessment-payment-form/"
+address = "7315 S Rainbow Blvd #120, Las Vegas, NV 89113"
+assess_group = "vegas"
 
+[[franchises]]
+id = 103
+name = "Queen Creek"
+url = "https://tutoringclub.com/queencreekaz/"
+director = "Daniel"
+email = "queencreekaz@tutoringclub.com"
+timezone = "America/Phoenix"
+assessment_form = "https://tutoringclub.com/queencreekaz/student-intake-form/"
+payment_form = "https://tutoringclub.com/queencreekaz/assessment-payment-form/"
+address = "85 West Combs Road Suite 111, San Tan Valley, AZ 85140 US"
+assess_group = "vegas"

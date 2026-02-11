@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
+from sqlalchemy import create_engine
 
 from ..config import load_config
 
@@ -53,3 +54,8 @@ def insert_db_record(param_sql: str, values: Sequence[Any]) -> None:
         cur.execute(param_sql, values)
         conn.commit()
 
+
+def get_sqlite_engine(echo: bool = False):
+    """Return a SQLAlchemy engine bound to the configured SQLite DB."""
+    path = _db_path()
+    return create_engine(f"sqlite:///{path}", echo=echo)
