@@ -97,6 +97,84 @@ def build_parser() -> argparse.ArgumentParser:
     p_di_proc.add_argument("--dry-run", action="store_true")
     p_di_proc.set_defaults(func=cmd_direct_inquiry_process)
 
+    # student intake
+    p_si = subparsers.add_parser("student-intake", help="Process Student Intake Form emails")
+    si_sub = p_si.add_subparsers(dest="si_cmd")
+    p_si_proc = si_sub.add_parser("process", help="Process unread Student Intake messages")
+    p_si_proc.add_argument("--max", type=int, default=10)
+    p_si_proc.add_argument("--dry-run", action="store_true")
+    p_si_proc.set_defaults(func=cmd_student_intake_process)
+
+    # assessments flow
+    p_as = subparsers.add_parser("assessments", help="Assessment notifications")
+    as_sub = p_as.add_subparsers(dest="as_cmd")
+    p_as_sched = as_sub.add_parser("scheduled", help="Notify for scheduled assessments (webhook)")
+    p_as_sched.add_argument("--dry-run", action="store_true")
+    p_as_sched.set_defaults(func=cmd_assessments_scheduled)
+    p_as_morn = as_sub.add_parser("morning", help="Morning-of confirmations for assessments")
+    p_as_morn.add_argument("--dry-run", action="store_true")
+    p_as_morn.add_argument("--franchise-id", help="Single ID or comma-separated list")
+    p_as_morn.add_argument("--since", help="ISO8601 lower bound override (server time)")
+    p_as_morn.add_argument("--until", help="ISO8601 upper bound override (server time)")
+    p_as_morn.add_argument("--limit", type=int, help="Max rows")
+    p_as_morn.set_defaults(func=cmd_assessments_morning)
+
+    # meetings flow
+    p_me = subparsers.add_parser("meetings", help="Meeting notifications")
+    me_sub = p_me.add_subparsers(dest="me_cmd")
+    p_me_sched = me_sub.add_parser("scheduled", help="Notify for scheduled meetings (webhook)")
+    p_me_sched.add_argument("--dry-run", action="store_true")
+    p_me_sched.set_defaults(func=cmd_meetings_scheduled)
+    p_me_morn = me_sub.add_parser("morning", help="Morning-of confirmations for meetings")
+    p_me_morn.add_argument("--dry-run", action="store_true")
+    p_me_morn.add_argument("--franchise-id", help="Single ID or comma-separated list")
+    p_me_morn.add_argument("--since", help="ISO8601 lower bound override (server time)")
+    p_me_morn.add_argument("--until", help="ISO8601 upper bound override (server time)")
+    p_me_morn.add_argument("--limit", type=int, help="Max rows")
+    p_me_morn.set_defaults(func=cmd_meetings_morning)
+
+    # reporting flow
+    p_rep = subparsers.add_parser("reporting", help="Reporting and cache utilities")
+    rep_sub = p_rep.add_subparsers(dest="rep_cmd")
+    p_rep_refresh = rep_sub.add_parser(
+        "refresh-cache",
+        help="Delete and repopulate AssessmentCache/MeetingCache from SQL Server",
+    )
+    p_rep_refresh.add_argument(
+        "--scope",
+        choices=["assessments", "meetings", "all"],
+        default="all",
+        help="Which cache(s) to refresh",
+    )
+    p_rep_refresh.add_argument("--limit", type=int, help="Limit rows inserted per table")
+    p_rep_refresh.add_argument("--dry-run", action="store_true")
+    # By default, mark rows as sent to avoid triggering sends. Use --no-mark-sent to opt out.
+    p_rep_refresh.add_argument(
+        "--no-mark-sent",
+        action="store_false",
+        dest="mark_sent",
+        help="Write rows with IsText='No' instead of 'Yes'",
+    )
+    p_rep_refresh.set_defaults(mark_sent=True)
+    p_rep_refresh.set_defaults(func=cmd_reporting_refresh_cache)
+
+    # inquiry follow-up
+    p_if = subparsers.add_parser(
+        "inquiry-followup", help="Inquiry follow-up (3-month slice)"
+    )
+    if_sub = p_if.add_subparsers(dest="if_cmd")
+    p_if_run = if_sub.add_parser("run", help="Run follow-up selection and send")
+    p_if_run.add_argument("--franchise-id", type=int, default=87)
+    p_if_run.add_argument("--limit", type=int, default=None)
+    p_if_run.add_argument(
+        "--webhook-env",
+        type=str,
+        default=None,
+        help="Env var name for Zap webhook (e.g., ZapHookInquiryFollowup)",
+    )
+    p_if_run.add_argument("--live", action="store_true", help="Send live (omit to dry-run)")
+    p_if_run.set_defaults(func=cmd_inquiry_followup_run)
+
     return parser
 
 
@@ -190,6 +268,101 @@ def cmd_direct_inquiry_process(args: argparse.Namespace) -> int:
     from .direct_inquiry import processor as di_proc
 
     count = di_proc.process(mode=args.mode, max_results=args.max, dry_run=args.dry_run)
+    print(count)
+    return 0
+
+
+def cmd_student_intake_process(args: argparse.Namespace) -> int:
+    from .student_auto import processor as si_proc
+
+    count = si_proc.process(max_results=args.max, dry_run=args.dry_run)
+    print(count)
+    return 0
+
+
+def cmd_assessments_scheduled(args: argparse.Namespace) -> int:
+    from .assessments import runner as as_runner
+
+    count = as_runner.scheduled_to_webhook(dry_run=args.dry_run)
+    print(count)
+    return 0
+
+
+def cmd_meetings_scheduled(args: argparse.Namespace) -> int:
+    from .meetings import runner as me_runner
+
+    count = me_runner.scheduled_to_webhook(dry_run=args.dry_run)
+    print(count)
+    return 0
+
+
+def _parse_id_list(val: str | None) -> list[int] | None:
+    if not val:
+        return None
+    try:
+        return [int(x.strip()) for x in val.split(",") if x.strip()]
+    except Exception:
+        return None
+
+
+def cmd_assessments_morning(args: argparse.Namespace) -> int:
+    from .assessments import runner as as_runner
+
+    fids = _parse_id_list(args.franchise_id)
+    count = as_runner.morning_to_webhook(
+        dry_run=args.dry_run,
+        franchise_ids=fids,
+        since=args.since,
+        until=args.until,
+        limit=args.limit,
+    )
+    print(count)
+    return 0
+
+
+def cmd_meetings_morning(args: argparse.Namespace) -> int:
+    from .meetings import runner as me_runner
+
+    fids = _parse_id_list(args.franchise_id)
+    count = me_runner.morning_to_webhook(
+        dry_run=args.dry_run,
+        franchise_ids=fids,
+        since=args.since,
+        until=args.until,
+        limit=args.limit,
+    )
+    print(count)
+    return 0
+
+
+def cmd_reporting_refresh_cache(args: argparse.Namespace) -> int:
+    from .utility import refresh_cache as rc
+
+    scope = args.scope
+    limit = args.limit
+    dry = args.dry_run
+    mark_sent = getattr(args, "mark_sent", False)
+    if scope == "assessments":
+        deleted, written = rc.refresh_assessment_cache(limit=limit, dry_run=dry, mark_sent=mark_sent)
+        print({"table": "AssessmentCache", "deleted": deleted, "written": written, "dry_run": dry, "mark_sent": mark_sent})
+    elif scope == "meetings":
+        deleted, written = rc.refresh_meeting_cache(limit=limit, dry_run=dry, mark_sent=mark_sent)
+        print({"table": "MeetingCache", "deleted": deleted, "written": written, "dry_run": dry, "mark_sent": mark_sent})
+    else:
+        res = rc.refresh_both(limit=limit, dry_run=dry, mark_sent=mark_sent)
+        print(res)
+    return 0
+
+
+def cmd_inquiry_followup_run(args: argparse.Namespace) -> int:
+    from .inquiry_followup import run as if_run
+
+    count = if_run(
+        franchise_id=args.franchise_id,
+        limit=args.limit,
+        webhook_env=args.webhook_env,
+        dry_run=(not args.live),
+    )
     print(count)
     return 0
 

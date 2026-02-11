@@ -24,8 +24,8 @@ def _token_path() -> Path:
     return Path(cfg.direct_inquiry.token_path)
 
 
-def get_gmail_service():
-    token_path = _token_path()
+def get_gmail_service(token_path: Path | None = None):
+    token_path = Path(token_path) if token_path is not None else _token_path()
     creds = None
     try:
         if token_path.exists():
@@ -51,11 +51,14 @@ def get_gmail_service():
 
 def _get_client_secret_json() -> str:
     # Expect env var InquiryAutoAPI to contain the JSON string
+    # For compatibility with migrated Student Intake, also accept StudentAutoAPI
     import os
 
-    js = os.environ.get("InquiryAutoAPI")
+    js = os.environ.get("InquiryAutoAPI") or os.environ.get("StudentAutoAPI")
     if not js:
-        raise RuntimeError("Missing InquiryAutoAPI environment variable with Gmail OAuth client JSON")
+        raise RuntimeError(
+            "Missing InquiryAutoAPI (or StudentAutoAPI) environment variable with Gmail OAuth client JSON"
+        )
     return js
 
 
@@ -95,4 +98,3 @@ def extract_email_body(msg: email.message.Message) -> tuple[str | None, str | No
             elif ctype == "text/html":
                 raw_html = payload.decode("utf-8", errors="ignore")
     return plain_text, raw_html
-
