@@ -24,7 +24,7 @@ class Franchise:
 @dataclass(frozen=True)
 class DirectInquiryConfig:
     token_path: Path | None = None
-    vegas_ids: tuple[int, ...] = (6, 11, 15, 16, 60)
+    vegas_ids: tuple[int, ...] = (6, 11, 15, 16, 60, 110)
     phone_blacklist: tuple[str, ...] = ()
     grade_phrase_map: dict[str, str] | None = None
     grade_sql_map: dict[str, str] | None = None
@@ -81,7 +81,7 @@ def load_config(config_file: Path | None = None) -> Config:
     di_cfg = data.get("direct_inquiry", {}) if isinstance(data, dict) else {}
     token_path_str = di_cfg.get("token_path")
     token_path = Path(token_path_str) if token_path_str else (root / "Legacy Files to Migrate and Implement/DirectToInquiryPackage/token.json")
-    vegas_ids = tuple(di_cfg.get("vegas_ids", [6, 11, 15, 16, 60]))
+    vegas_ids = tuple(di_cfg.get("vegas_ids", [6, 11, 15, 16, 60, 110]))
     phone_blacklist = tuple(str(x) for x in di_cfg.get("phone_blacklist", []))
     grade_phrase_map = di_cfg.get("grade_phrase_map") or None
     grade_sql_map = di_cfg.get("grade_sql_map") or None
@@ -130,6 +130,7 @@ def load_config(config_file: Path | None = None) -> Config:
             Franchise(1, "Test", "https://tutoringclub.com/test/", "Daniel", "bmillares@tutoringclub.com", "America/Los_Angeles"),
             Franchise(57, "Gilbert", "https://tutoringclub.com/gilbertaz/", "Ryan", "gilbertaz@tutoringclub.com", "America/Phoenix"),
             Franchise(24, "North Fresno", "https://tutoringclub.com/gilbertaz/", "Ryan", "fresnoca@tutoringclub.com", "America/Los_Angeles"),
+            Franchise(49, "Tutoring Club Bakersfield", "https://tutoringclub.com/bakersfieldca/", "Amanda", "bakersfieldca@tutoringclub.com", "America/Los_Angeles"),
             Franchise(19, "Tutoring Club of Tustin", "https://tutoringclub.com/tustinca/", "Tim", "tustinca@tutoringclub.com", "America/Los_Angeles"),
             Franchise(8, "Fountain Valley CA", "https://tutoringclub.com/fountain-valley-ca/", "Huy", "fountainvalleyca@tutoringclub.com", "America/Los_Angeles"),
             Franchise(20, "Clovis", "https://tutoringclub.com/clovisca/", "Katie", "clovisca@tutoringclub.com", "America/Los_Angeles"),
@@ -139,6 +140,7 @@ def load_config(config_file: Path | None = None) -> Config:
             Franchise(11, "Green Valley", "https://tutoringclub.com/hendersonnv/", "Shannon", "hendersonnv@tutoringclub.com", "America/Los_Angeles"),
             Franchise(6, "Anthem", "https://tutoringclub.com/anthemnv/", "Shannon", "anthemnv@tutoringclub.com", "America/Los_Angeles"),
             Franchise(16, "Rhodes Ranch", "https://tutoringclub.com/rhodesranchnv/", "Shannon", "rhodesranchnv@tutoringclub.com", "America/Los_Angeles"),
+            Franchise(110, "Cadence", "https://tutoringclub.com/cadencenv/", "Jenica", "cadencenv@tutoringclub.com", "America/Los_Angeles"),
         ]
 
     return Config(

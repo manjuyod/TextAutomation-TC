@@ -42,9 +42,26 @@ class TestDirectInquiryZapierMessage(unittest.TestCase):
         self.assertIn("Monday through Thursday from 11 AM to 8 PM.", msg)
         self.assertNotIn("Saturday From 10 AM to 2 PM.", msg)
 
-    def test_franchise_57_still_includes_existing_hours(self):
+    def test_franchise_57_uses_new_daniel_copy(self):
         msg = self._message_for_franchise(57)
-        self.assertIn("Monday through Thursday From 10 AM to 7 PM, and Saturday From 10 AM to 2 PM.", msg)
+        self.assertIn("Hi, Alex,", msg)
+        self.assertIn("This is Daniel from Tutoring Club of Gilbert.", msg)
+        self.assertIn(
+            "Our next step is a quick 15-minute call to discuss Jordan's academic needs, our enrollment process, scheduling, and tuition options.",
+            msg,
+        )
+        self.assertIn("We are available Monday-Thursday 10AM-7PM and Saturday 10A-2PM.", msg)
+        self.assertNotIn("Good afternoon Alex, from Tutoring Club!", msg)
+        self.assertNotIn("Monday through Thursday From 10 AM to 7 PM, and Saturday From 10 AM to 2 PM.", msg)
+
+    def test_franchise_103_uses_queen_creek_name(self):
+        msg = self._message_for_franchise(103)
+        self.assertIn("This is Daniel from Tutoring Club of Queen Creek.", msg)
+
+    def test_franchise_110_uses_cadence_center_name(self):
+        msg = self._message_for_franchise(110)
+        self.assertIn("Good afternoon Alex, from Tutoring Club of Cadence!", msg)
+        self.assertNotIn("from Tutoring Club!", msg)
 
     def test_generic_franchise_has_no_explicit_hours_line(self):
         msg = self._message_for_franchise(24)

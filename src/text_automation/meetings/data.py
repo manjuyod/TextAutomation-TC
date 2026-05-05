@@ -3,12 +3,20 @@ from __future__ import annotations
 import pandas as pd
 from sqlalchemy import text
 
+from ..config import load_config
 from ..db.sql import get_engine
 
 
+def _configured_franchise_ids_sql() -> str:
+    cfg = load_config()
+    franchise_ids = sorted({int(f.id) for f in cfg.franchises})
+    return ", ".join(str(fid) for fid in franchise_ids)
+
+
 def fetch_meeting_data() -> pd.DataFrame:
+    franchise_ids_sql = _configured_franchise_ids_sql()
     q = text(
-        """
+        f"""
 SELECT TOP 100
     'Meeting1' AS AutomationStage,
     m.InquiryID,
@@ -35,7 +43,7 @@ SELECT TOP 100
 FROM tblMeetings m
 WHERE m.InquiryID IN (
     SELECT ID FROM tblInquiry
-    WHERE FranchiesId IN (1, 2, 3, 6, 11, 15, 16, 19, 24, 20, 60, 57, 87, 103)
+    WHERE FranchiesId IN ({franchise_ids_sql})
 )
 AND NOT EXISTS (
     SELECT 1 FROM tblAssessments a

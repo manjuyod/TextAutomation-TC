@@ -3,7 +3,14 @@ from __future__ import annotations
 import pandas as pd
 from sqlalchemy import text
 
+from ..config import load_config
 from ..db.sql import get_engine
+
+
+def _configured_franchise_ids_sql() -> str:
+    cfg = load_config()
+    franchise_ids = sorted({int(f.id) for f in cfg.franchises})
+    return ",".join(str(fid) for fid in franchise_ids)
 
 
 def fetch_assessment_data() -> pd.DataFrame:
@@ -11,8 +18,9 @@ def fetch_assessment_data() -> pd.DataFrame:
     Pull recent scheduled assessments from SQL Server with normalized columns.
     Mirrors legacy Assessment1DataCollectionsOnly.fetch_assessment_data.
     """
+    franchise_ids_sql = _configured_franchise_ids_sql()
     q = text(
-        """
+        f"""
 SELECT TOP 150
     'Assessment1' AS AutomationStage,
     a.ID AS AssessmentID,
@@ -27,7 +35,7 @@ SELECT TOP 150
 FROM tblAssessments a
 WHERE a.InquiryID IN (
     SELECT ID FROM tblInquiry
-    WHERE FranchiesId IN (1,2,3,6,11,15,16,19,24,20,57,60,87,103)
+    WHERE FranchiesId IN ({franchise_ids_sql})
 )
 AND a.IsDeleted = 0
 AND a.Time IS NOT NULL
