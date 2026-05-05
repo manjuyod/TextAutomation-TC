@@ -10,7 +10,7 @@ database = "src/text_automation/reporting/TextDatabase.db"
 # OAuth token storage for Gmail API
 token_path = "src/text_automation/direct_inquiry/token.json"
 # Vegas center IDs (special business-hours handling)
-vegas_ids = [6, 11, 15, 16, 60]
+vegas_ids = [6, 11, 15, 16, 60, 110]
 phone_blacklist = ["2499618600", "2563668195", "8852895525", "2206940173", "8557588624", "3454497480"]
 
 [student_intake]
@@ -84,6 +84,18 @@ timezone = "America/Los_Angeles"
 assessment_form = "https://tutoringclub.com/fresnoca/student-intake-form/"
 payment_form = "https://tutoringclub.com/fresnoca/assessment-payment-form/"
 address = "9423 North Fort Washington Road #106 Fresno, CA 93720"
+assess_group = "cali"
+
+[[franchises]]
+id = 49
+name = "Tutoring Club Bakersfield"
+url = "https://tutoringclub.com/bakersfieldca/"
+director = "Amanda"
+email = "bakersfieldca@tutoringclub.com"
+timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/bakersfieldca/student-intake-form/"
+payment_form = "https://tutoringclub.com/bakersfieldca/assessment-payment-form/"
+address = "4300 Coffee Road Suite A1 Bakersfield, CA 93308 US"
 assess_group = "cali"
 
 [[franchises]]
@@ -192,6 +204,30 @@ timezone = "America/Los_Angeles"
 assessment_form = "https://tutoringclub.com/rhodesranchnv/student-intake-form/"
 payment_form = "https://tutoringclub.com/rhodesranchnv/assessment-payment-form/"
 address = "7315 S Rainbow Blvd #120, Las Vegas, NV 89113"
+assess_group = "vegas"
+
+[[franchises]]
+id = 74
+name = "Corona"
+url = "https://tutoringclub.com/coronaca/"
+director = "Cindy"
+email = "coronaca@tutoringclub.com"
+timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/coronaca/student-intake-form/"
+payment_form = ""
+address = "2363 California Avenue Suite 102 Corona, CA 92881 US"
+assess_group = "cali"
+
+[[franchises]]
+id = 110
+name = "Cadence"
+url = "https://tutoringclub.com/cadencenv/"
+director = "Jenica"
+email = "cadencenv@tutoringclub.com"
+timezone = "America/Los_Angeles"
+assessment_form = "https://tutoringclub.com/cadencenv/student-intake-form/"
+payment_form = "https://tutoringclub.com/cadencenv/assessment-payment-form/"
+address = "883 East Lake Mead Parkway, Henderson, NV 89015"
 assess_group = "vegas"
 
 [[franchises]]

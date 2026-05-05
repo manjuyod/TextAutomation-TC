@@ -157,7 +157,7 @@ def _process_one(service, msg_id: str, msg, mode: str, dry_run: bool) -> Optiona
     sent_utc = extract_sent_utc(msg)
     local_dt = localize_timestamp(sent_utc, fid)
     is_in_hours = in_business_window(local_dt)
-    is_vegas = fid in (cfg.direct_inquiry.vegas_ids if cfg.direct_inquiry else (6, 11, 15, 16, 60))
+    is_vegas = fid in (cfg.direct_inquiry.vegas_ids if cfg.direct_inquiry else (6, 11, 15, 16, 60, 110))
 
     # routing logic
     if mode == "auto":
@@ -261,8 +261,8 @@ def _process_one(service, msg_id: str, msg, mode: str, dry_run: bool) -> Optiona
             pass
         conn.execute(sa_text(sql))
 
-    # Zapier (except FID 1)
-    if fid_detected != 1:
+    # Zapier (except FID 1 and 8)
+    if fid_detected not in (1, 8):
         send_direct_inquiry(
             parent_first_name=p_first,
             student_first_name=s_first,

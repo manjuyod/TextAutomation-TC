@@ -14,6 +14,8 @@ WINTER_BREAK_START_MONTH = 12
 WINTER_BREAK_START_DAY = 19
 WINTER_BREAK_END_MONTH = 1
 WINTER_BREAK_END_DAY = 4
+DEFAULT_VEGAS_IDS = (6, 11, 15, 16, 60, 110)
+DIRECT_INQUIRY2_IDS = (49, 110)
 
 
 def _get_local_now(franchise_id: int):
@@ -38,7 +40,7 @@ def _is_on_winter_break(franchise_id: int, local_now) -> bool:
 
     cfg = load_config()
     di = cfg.direct_inquiry
-    vegas_ids = di.vegas_ids if (di and di.vegas_ids) else (6, 11, 15, 16, 60)
+    vegas_ids = di.vegas_ids if (di and di.vegas_ids) else DEFAULT_VEGAS_IDS
     if franchise_id not in vegas_ids:
         return False
 
@@ -57,6 +59,18 @@ def _capitalize_name(name: str) -> str:
     return " ".join(w.capitalize() for w in (name or "").split())
 
 
+def _franchise_name(franchise_id: int) -> str:
+    cfg = load_config()
+    return next((f.name for f in cfg.franchises if f.id == int(franchise_id)), "")
+
+
+def _is_vegas_center(franchise_id: int) -> bool:
+    cfg = load_config()
+    di = cfg.direct_inquiry
+    vegas_ids = di.vegas_ids if (di and di.vegas_ids) else DEFAULT_VEGAS_IDS
+    return franchise_id in vegas_ids
+
+
 def send_direct_inquiry(
     parent_first_name: str,
     student_first_name: str,
@@ -64,9 +78,10 @@ def send_direct_inquiry(
     franchise_id: int,
     grade_string: str,
 ) -> None:
-    webhook = os.getenv("ZapHookDirectInquiry")
+    webhook_env = "ZapHookDirectInquiry2" if int(franchise_id) in DIRECT_INQUIRY2_IDS else "ZapHookDirectInquiry"
+    webhook = os.getenv(webhook_env)
     if not webhook:
-        print("Zapier webhook URL is not set (ZapHookDirectInquiry)")
+        print(f"Zapier webhook URL is not set ({webhook_env})")
         return
 
     local_now = _get_local_now(franchise_id)
@@ -79,13 +94,15 @@ def send_direct_inquiry(
         winter_break_note = "We're out for winter break now, but we'll be back on the 5th.\n\n"
 
     if franchise_id in (57, 103):
+        franchise_name = _franchise_name(franchise_id) or "Gilbert"
         message = (
-            f"{greeting} {parent_first_name}, from Tutoring Club!\n\n"
-            "Thank you for filling out our contact request form.\n\n"
-            "We are available Monday through Thursday From 10 AM to 7 PM, and Saturday From 10 AM to 2 PM.\n\n"
-            f"Please let us know a couple of convenient times for a 15-minute phone call to discuss {student_first_name}'s educational needs, our hours of operation, tuition options, and how Tutoring Club can best help your {grade_phrase}. We'll confirm once we receive your availability.\n\n"
-            f"{winter_break_note}"
-            "Looking forward to speaking with you!"
+            f"Hi, {parent_first_name},\n\n"
+            f"This is Daniel from Tutoring Club of {franchise_name}. Thanks for reaching out about tutoring for {student_first_name}! "
+            f"We begin with a personalized learning plan so we can focus on the skills {student_first_name} needs most and build academic confidence. "
+            f"Our next step is a quick 15-minute call to discuss {student_first_name}'s academic needs, our enrollment process, scheduling, and tuition options.\n\n"
+            "Please provide a few times that are most convenient for this phone call. "
+            "We are available Monday-Thursday 10AM-7PM and Saturday 10A-2PM. "
+            "We look forward to connecting with you soon. Have a great day."
         )
     elif franchise_id == 20:
         message = (
@@ -95,6 +112,24 @@ def send_direct_inquiry(
             f"Please let us know a couple of convenient times for a 15-minute phone call to discuss {student_first_name}'s educational needs, our hours of operation, tuition options, and how Tutoring Club can best help your {grade_phrase}. We'll confirm once we receive your availability.\n\n"
             f"{winter_break_note}"
             "Looking forward to speaking with you!"
+        )
+    elif _is_vegas_center(franchise_id):
+        franchise_name = _franchise_name(franchise_id)
+        center_greeting = f"{greeting} {parent_first_name}, from Tutoring Club!\n\n"
+        if franchise_name:
+            center_greeting = (
+                f"{greeting} {parent_first_name}, from Tutoring Club of {franchise_name}!\n\n"
+            )
+
+        message = (
+            center_greeting
+            + "Thank you for filling out our contact request form.\n\n"
+            + f"We begin with a personalized learning plan so we can focus on the skills {student_first_name} needs most and build academic confidence. "
+            + f"Our next step is a quick 15-minute call to discuss {student_first_name}'s academic needs, our enrollment process, scheduling, and tuition options.\n\n"
+            + "Please provide a few times that are most convenient for this phone call. "
+            + "We are available Monday-Thursday 10AM-7PM and Saturday 10A-2PM. "
+            + f"{winter_break_note}"
+            + "Looking forward to speaking with you!"
         )
     else:
         message = (
