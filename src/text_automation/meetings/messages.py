@@ -8,6 +8,10 @@ import requests
 
 from ..config import load_config
 from ..direct_inquiry.business_hours import localize_timestamp
+# from ..accounts.quo import send_payload as send_to_quo
+
+
+# QUO_FRANCHISE_IDS = {95}
 
 
 def _greeting(fid: int) -> str:
@@ -40,6 +44,8 @@ def _webhook_for_franchise(fid: int) -> Optional[str]:
         return os.getenv("ZapHookMeetingGilVeg")
     if grp == "cali":
         return os.getenv("ZapHookMeetingCali")
+    if grp == "east_q":
+        return None
     return os.getenv("ZapHookMeetingGilVeg") or os.getenv("ZapHookMeetingCali")
 
 
@@ -144,11 +150,18 @@ This is Tutoring Club, and I would like to confirm our appointment {relative_day
 
 
 def send_to_webhook(franchise_id: int, message: str, phone: str) -> bool:
+    if int(franchise_id) in (62, 95):
+        print({"meeting": {"send": "skipped", "reason": "franchise_gate", "franchise_id": int(franchise_id)}})
+        return True
+
+    payload = {"message": message, "AssessmentPhone": phone, "FranchiseID": franchise_id}
+    # if int(franchise_id) in QUO_FRANCHISE_IDS:
+    #     return send_to_quo(payload)
+
     url = _webhook_for_franchise(franchise_id)
     if not url:
         print("Meeting webhook URL not set")
         return False
-    payload = {"message": message, "AssessmentPhone": phone, "FranchiseID": franchise_id}
     try:
         resp = requests.post(url, json=payload, timeout=10)
         resp.raise_for_status()

@@ -80,6 +80,8 @@ def send_direct_inquiry(
 ) -> None:
     webhook_env = "ZapHookDirectInquiry2" if int(franchise_id) in DIRECT_INQUIRY2_IDS else "ZapHookDirectInquiry"
     webhook = os.getenv(webhook_env)
+    if not webhook and webhook_env != "ZapHookDirectInquiry":
+        webhook = os.getenv("ZapHookDirectInquiry")
     if not webhook:
         print(f"Zapier webhook URL is not set ({webhook_env})")
         return
@@ -93,7 +95,15 @@ def send_direct_inquiry(
     if _is_on_winter_break(franchise_id, local_now):
         winter_break_note = "We're out for winter break now, but we'll be back on the 5th.\n\n"
 
-    if franchise_id in (57, 103):
+    if franchise_id in (62, 95):
+        message = (
+            f"Hi {parent_first_name}! This is Michele Tanner from Tutoring Club 😊\n"
+            "Thanks so much for reaching out about your student! I just sent you an email — "
+            "check it for a link to book a quick 15-min call with me so we can figure out "
+            "the best next step for your child.\n"
+            "Feel free to text me here anytime with questions. Can't wait to connect!"
+        )
+    elif franchise_id in (57, 103):
         franchise_name = _franchise_name(franchise_id) or "Gilbert"
         message = (
             f"Hi, {parent_first_name},\n\n"

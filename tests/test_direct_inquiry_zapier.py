@@ -63,6 +63,17 @@ class TestDirectInquiryZapierMessage(unittest.TestCase):
         self.assertIn("Good afternoon Alex, from Tutoring Club of Cadence!", msg)
         self.assertNotIn("from Tutoring Club!", msg)
 
+    def test_franchise_95_uses_hodges_michele_copy(self):
+        msg = self._message_for_franchise(95)
+        self.assertEqual(
+            msg,
+            "Hi Alex! This is Michele Tanner from Tutoring Club 😊\n"
+            "Thanks so much for reaching out about your student! I just sent you an email — "
+            "check it for a link to book a quick 15-min call with me so we can figure out "
+            "the best next step for your child.\n"
+            "Feel free to text me here anytime with questions. Can't wait to connect!",
+        )
+
     def test_generic_franchise_has_no_explicit_hours_line(self):
         msg = self._message_for_franchise(24)
         self.assertNotIn("Monday through Thursday from 11 AM to 8 PM.", msg)
