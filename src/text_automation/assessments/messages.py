@@ -10,6 +10,10 @@ from urllib.parse import quote_plus
 from ..config import load_config
 from ..common.dates import weekday_proper
 from ..direct_inquiry.business_hours import localize_timestamp
+# from ..accounts.quo import send_payload as send_to_quo
+
+
+# QUO_FRANCHISE_IDS = {95}
 
 
 def _greeting(fid: int) -> str:
@@ -49,6 +53,8 @@ def _webhook_for_franchise(fid: int) -> Optional[str]:
         return os.getenv("ZapHookAssessGilVeg")
     if group == "cali":
         return os.getenv("ZapHookAssessCali")
+    if group == "east_q":
+        return None
     # default fallback
     return os.getenv("ZapHookAssessGilVeg") or os.getenv("ZapHookAssessCali")
 
@@ -190,11 +196,18 @@ map_link}
 
 
 def send_to_webhook(franchise_id: int, message: str, phone: str) -> bool:
+    if int(franchise_id) in (62, 95):
+        print({"assessment": {"send": "skipped", "reason": "franchise_gate", "franchise_id": int(franchise_id)}})
+        return True
+
+    payload = {"message": message, "AssessmentPhone": phone, "FranchiseID": franchise_id}
+    # if int(franchise_id) in QUO_FRANCHISE_IDS:
+    #     return send_to_quo(payload)
+
     url = _webhook_for_franchise(franchise_id)
     if not url:
         print("Assessment webhook URL not set")
         return False
-    payload = {"message": message, "AssessmentPhone": phone, "FranchiseID": franchise_id}
     try:
         resp = requests.post(url, json=payload, timeout=10)
         resp.raise_for_status()

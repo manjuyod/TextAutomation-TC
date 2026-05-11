@@ -8,6 +8,10 @@ import requests
 from .sql import fetch_inquiries
 from .messages import build_message
 from ..config import load_config
+# from ..accounts.quo import send_payload as send_to_quo
+
+
+# QUO_FRANCHISE_IDS = {95}
 
 
 def _assess_group(fid: int) -> str:
@@ -19,13 +23,16 @@ def _assess_group(fid: int) -> str:
 
 
 def _resolve_webhook(franchise_id: int, env_name: Optional[str]) -> Optional[str]:
+    grp = _assess_group(franchise_id)
+    if grp == "east_q":
+        return None
+
     # Allow explicit override via env var name if provided and set
     if env_name:
         url = os.getenv(env_name)
         if url:
             return url
     # Default to meetings webhooks by assess_group
-    grp = _assess_group(franchise_id)
     if grp == "vegas":
         return os.getenv("ZapHookMeetingGilVeg")
     if grp == "cali":
@@ -51,12 +58,28 @@ def _post_to_webhook(webhook_url: str, phone: str, message: str, franchise_id: i
         return False
 
 
+def _post_to_quo(phone: str, message: str, franchise_id: int | None = None) -> bool:
+    payload = {
+        "message": message,
+        "AssessmentPhone": phone,
+        "ContactPhone": phone,
+    }
+    if franchise_id is not None:
+        payload["FranchiseID"] = int(franchise_id)
+    # return send_to_quo(payload)
+    return False
+
+
 def run(
     franchise_id: int = 87,
     limit: int | None = None,
     webhook_env: str | None = None,
     dry_run: bool = True,
 ) -> int:
+    if int(franchise_id) in (62, 95):
+        print({"inquiry_followup": {"send": "skipped", "reason": "franchise_gate", "franchise_id": int(franchise_id)}})
+        return 0
+
     # Fetch data (default 3 months back)
     try:
         df = fetch_inquiries(franchise_id=franchise_id, limit=limit)
@@ -82,6 +105,9 @@ def run(
         return 0
 
     # Resolve webhook URL; if absent, we will operate in dry-run mode
+    # use_quo = int(franchise_id) in QUO_FRANCHISE_IDS
+    # hook_url = None if use_quo else _resolve_webhook(franchise_id, webhook_env)
+    # live_mode = (not dry_run) and (use_quo or bool(hook_url))
     hook_url = _resolve_webhook(franchise_id, webhook_env)
     live_mode = (not dry_run) and bool(hook_url)
     if not hook_url and not dry_run:
@@ -98,6 +124,10 @@ def run(
 
         header = f"[inquiry_followup] FID={int(franchise_id)} InquiryID={int(row.get('InquiryID') or 0)}"
         if live_mode:
+            # if use_quo:
+            #     ok = _post_to_quo(phone=phone, message=msg, franchise_id=franchise_id)
+            # else:
+            #     ok = _post_to_webhook(hook_url, phone=phone, message=msg, franchise_id=franchise_id)
             ok = _post_to_webhook(hook_url, phone=phone, message=msg, franchise_id=franchise_id)
             if ok:
                 sent += 1

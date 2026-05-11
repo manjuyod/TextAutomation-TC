@@ -18,7 +18,7 @@ class Franchise:
     assessment_form: str = ""
     payment_form: str = ""
     address: str = ""
-    assess_group: str = ""  # e.g., "vegas" or "cali"
+    assess_group: str = ""  # e.g., "vegas", "cali", or "east_q"
 
 
 @dataclass(frozen=True)
@@ -141,6 +141,8 @@ def load_config(config_file: Path | None = None) -> Config:
             Franchise(6, "Anthem", "https://tutoringclub.com/anthemnv/", "Shannon", "anthemnv@tutoringclub.com", "America/Los_Angeles"),
             Franchise(16, "Rhodes Ranch", "https://tutoringclub.com/rhodesranchnv/", "Shannon", "rhodesranchnv@tutoringclub.com", "America/Los_Angeles"),
             Franchise(110, "Cadence", "https://tutoringclub.com/cadencenv/", "Jenica", "cadencenv@tutoringclub.com", "America/Los_Angeles"),
+            Franchise(62, "Tutoring Club of Jacksonville", "https://tutoringclub.com/jacksonvillefl/", "Michele", "jacksonvillefl@tutoringclub.com", "America/New_York", "https://tutoringclub.com/jacksonvillefl/student-intake-form/", "https://tutoringclub.com/jacksonvillefl/assessment-payment-form/", "13546 Beach Boulevard Jacksonville, FL 32224 US", "east_q"),
+            Franchise(95, "Hodges", "https://tutoringclub.com/hodgesfl/", "Michele", "hodgesfl@tutoringclub.com", "America/New_York", "https://tutoringclub.com/hodgesfl/student-intake-form/", "https://tutoringclub.com/hodgesfl/assessment-payment-form/", "13546 Beach Boulevard Jacksonville, FL 32224 US", "east_q"),
         ]
 
     return Config(
