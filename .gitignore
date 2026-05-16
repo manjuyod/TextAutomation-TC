@@ -17,6 +17,7 @@ venv/
 # IDE
 .idea/
 .vscode/
+.playwright-cli/
 *.code-workspace
 
 # Local OAuth tokens
