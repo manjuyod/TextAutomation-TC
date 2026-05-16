@@ -64,10 +64,14 @@ def _franchise_id_from_link(link: Optional[str]) -> Optional[int]:
     norm = link.rstrip("/")
     cfg = load_config()
     for f in cfg.franchises:
+        if f.direct_inquiry_only:
+            continue
         if f.assessment_form and f.assessment_form.rstrip("/") == norm:
             return f.id
     # Fallback: try matching by site url prefix
     for f in cfg.franchises:
+        if f.direct_inquiry_only:
+            continue
         if f.url and norm.startswith(f.url.rstrip("/")):
             return f.id
     return None

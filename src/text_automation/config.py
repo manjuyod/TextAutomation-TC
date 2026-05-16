@@ -19,6 +19,7 @@ class Franchise:
     payment_form: str = ""
     address: str = ""
     assess_group: str = ""  # e.g., "vegas", "cali", or "east_q"
+    direct_inquiry_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -119,6 +120,7 @@ def load_config(config_file: Path | None = None) -> Config:
                     payment_form=str(obj.get("payment_form", "")),
                     address=str(obj.get("address", "")),
                     assess_group=str(obj.get("assess_group", "")),
+                    direct_inquiry_only=bool(obj.get("direct_inquiry_only", False)),
                 )
             )
         except Exception:

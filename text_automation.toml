@@ -265,3 +265,16 @@ assessment_form = "https://tutoringclub.com/queencreekaz/student-intake-form/"
 payment_form = "https://tutoringclub.com/queencreekaz/assessment-payment-form/"
 address = "85 West Combs Road Suite 111, San Tan Valley, AZ 85140 US"
 assess_group = "vegas"
+
+[[franchises]]
+id = 107
+name = "Rancho Cucamonga"
+url = "https://tutoringclub.com/ranchocucamongaca/"
+director = "Gaby"
+email = "cucamongaca@tutoringclub.com"
+timezone = "America/Los_Angeles"
+assessment_form = ""
+payment_form = ""
+address = "7210 Day Creek Boulevard Suite 119 Rancho Cucamonga CA 91739"
+assess_group = "cali"
+direct_inquiry_only = true

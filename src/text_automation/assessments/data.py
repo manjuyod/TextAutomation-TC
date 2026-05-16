@@ -9,7 +9,7 @@ from ..db.sql import get_engine
 
 def _configured_franchise_ids_sql() -> str:
     cfg = load_config()
-    franchise_ids = sorted({int(f.id) for f in cfg.franchises})
+    franchise_ids = sorted({int(f.id) for f in cfg.franchises if not f.direct_inquiry_only})
     return ",".join(str(fid) for fid in franchise_ids)
 
 
