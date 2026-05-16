@@ -19,7 +19,9 @@ venv/
 .vscode/
 *.code-workspace
 
+# Local OAuth tokens
+**/token.json
+
 # Mac / Windows
 .DS_Store
 Thumbs.db
-
