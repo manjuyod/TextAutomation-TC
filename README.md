@@ -70,14 +70,24 @@ General Use Utilities
     database = "src/text_automation/reporting/TextDatabase.db"
     ```
 
-Direct Inquiry (Gmail)
-----------------------
+Direct Inquiry (Gravity Forms + Gmail)
+--------------------------------------
 
+- Main-site direct inquiries are pulled from Gravity Forms API v2. Gravity Forms `is_read` is the source of truth.
+- Env: `gravity_pull_main_tc` should contain the Gravity Forms credential JSON (`consumerkey` and `consumer_secret`), or set `GRAVITY_PULL_MAIN_TC_CONSUMER_KEY` and `GRAVITY_PULL_MAIN_TC_CONSUMER_SECRET`.
+- One-time baseline before scheduling live pulls:
+  - `uv run text-automation wordpress gravity-forms baseline-direct-inquiry --dry-run`
+  - `uv run text-automation wordpress gravity-forms baseline-direct-inquiry`
+  - Windows helper: `scripts/direct_inquiry_gravity_forms_baseline.bat --dry-run`, then `scripts/direct_inquiry_gravity_forms_baseline.bat`
+- Live pull:
+  - `uv run text-automation wordpress gravity-forms process-direct-inquiry --limit 50 --dry-run`
+  - Remove `--dry-run` to execute SQL/Zapier and mark Gravity Forms entries read after success.
+- Gmail remains for location-specific notification emails only.
 - Env: `InquiryAutoAPI` must contain the Gmail OAuth client JSON (as a string). First run opens a browser and writes a token to `src/text_automation/direct_inquiry/token.json` (configurable in `text_automation.toml`).
 - Env: `ZapHookDirectInquiry` for outgoing Zapier webhook.
-- Config: `text_automation.toml` holds `direct_inquiry.token_path`, `direct_inquiry.vegas_ids`, and the `[[franchises]]` table (id, name, url, director, email, timezone).
+- Config: `text_automation.toml` holds `direct_inquiry.token_path`, `direct_inquiry.vegas_ids`, and the `[[franchises]]` table (id, name, url, director, email, timezone, preferred_locations).
 - CLI:
-  - `uv run text-automation direct-inquiry process --mode auto --max 50` (recommended)
+  - `uv run text-automation direct-inquiry process --mode auto --max 50`
   - Modes: `auto` (Vegas after-hours only; others always), `all-day` (non-Vegas only; Vegas in-hours mark-as-read), `after-hours` (Vegas after-hours only)
   - `--dry-run` to avoid DB/Zapier/mark-as-read side effects
 
@@ -132,8 +142,9 @@ Windows Helpers
   - scripts/meetings_scheduled.bat  runs Meeting1 scheduled flow
   - scripts/meetings_morning_57.bat  runs Meeting2 for franchise 57
   - scripts/meetings_morning_rest.bat  runs Meeting2 for all other configured franchises
-  - scripts/combined_followup_workflow.bat  runs Assessment1 scheduled, then Meeting1 scheduled (passes through extra args like --dry-run)
-  - scripts/direct_inquiry_auto.bat  runs Direct Inquiry (mode=auto, --max 50). Pass --dry-run to avoid DB/Zapier/mark-as-read.
+  - scripts/combined_followup_workflow.bat - runs Gravity Forms Direct Inquiry, location-specific Gmail Direct Inquiry, Assessment1 scheduled, Meeting1 scheduled, and Student Intake (passes through extra args like --dry-run)
+  - scripts/direct_inquiry_gravity_forms_baseline.bat - marks unread main-site Gravity Forms Direct Inquiry entries read without SQL/Zapier. Run with --dry-run first.
+  - scripts/direct_inquiry_auto.bat - runs Gravity Forms Direct Inquiry first, then location-specific Gmail Direct Inquiry. Pass --dry-run to avoid DB/Zapier/mark-as-read.
   - scripts/student_intake_auto.bat  runs Student Intake (max=50). Pass --dry-run to preview; note: dry-run still marks Gmail messages as read.
 
 For Maintainers

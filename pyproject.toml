@@ -27,6 +27,7 @@ dependencies = [
   "pyodbc>=5.0",
   "PyPDF2>=3.0",
   "requests>=2.31",
+  "requests-oauthlib>=2.0",
   "beautifulsoup4>=4.12",
   "google-api-python-client>=2.131",
   "google-auth-oauthlib>=1.2",

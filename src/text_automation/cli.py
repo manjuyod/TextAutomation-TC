@@ -175,6 +175,44 @@ def build_parser() -> argparse.ArgumentParser:
     p_if_run.add_argument("--live", action="store_true", help="Send live (omit to dry-run)")
     p_if_run.set_defaults(func=cmd_inquiry_followup_run)
 
+    # wordpress / gravity forms shape study
+    p_wp = subparsers.add_parser("wordpress", help="WordPress integrations")
+    wp_sub = p_wp.add_subparsers(dest="wp_cmd")
+    p_gf = wp_sub.add_parser("gravity-forms", help="Gravity Forms REST API utilities")
+    gf_sub = p_gf.add_subparsers(dest="gf_cmd")
+    p_gf_export = gf_sub.add_parser("export-shape", help="Export redacted Gravity Forms shape data")
+    p_gf_export.add_argument("--profile", default="gravity_pull_main_tc")
+    p_gf_export.add_argument("--limit", type=int, default=25)
+    p_gf_export.add_argument("--out", required=True)
+    p_gf_export.add_argument("--base-url", default="https://tutoringclub.com/")
+    p_gf_export.add_argument("--auth-method", choices=["basic", "oauth1"], default="basic")
+    p_gf_export.add_argument("--form-id", action="append", type=int, default=None)
+    p_gf_export.set_defaults(func=cmd_wordpress_gravity_forms_export_shape)
+
+    p_gf_baseline = gf_sub.add_parser(
+        "baseline-direct-inquiry",
+        help="Mark unread Gravity Forms direct-inquiry rows as read without processing",
+    )
+    p_gf_baseline.add_argument("--profile", default="gravity_pull_main_tc")
+    p_gf_baseline.add_argument("--limit", type=int, default=None)
+    p_gf_baseline.add_argument("--dry-run", action="store_true")
+    p_gf_baseline.add_argument("--base-url", default="https://tutoringclub.com/")
+    p_gf_baseline.add_argument("--auth-method", choices=["basic", "oauth1"], default="basic")
+    p_gf_baseline.add_argument("--form-id", action="append", type=int, default=None)
+    p_gf_baseline.set_defaults(func=cmd_wordpress_gravity_forms_baseline_direct_inquiry)
+
+    p_gf_process = gf_sub.add_parser(
+        "process-direct-inquiry",
+        help="Normalize and process unread Gravity Forms direct-inquiry rows",
+    )
+    p_gf_process.add_argument("--profile", default="gravity_pull_main_tc")
+    p_gf_process.add_argument("--limit", type=int, default=50)
+    p_gf_process.add_argument("--form-id", action="append", type=int, default=None)
+    p_gf_process.add_argument("--dry-run", action="store_true")
+    p_gf_process.add_argument("--base-url", default="https://tutoringclub.com/")
+    p_gf_process.add_argument("--auth-method", choices=["basic", "oauth1"], default="basic")
+    p_gf_process.set_defaults(func=cmd_wordpress_gravity_forms_process_direct_inquiry)
+
     return parser
 
 
@@ -365,6 +403,93 @@ def cmd_inquiry_followup_run(args: argparse.Namespace) -> int:
     )
     print(count)
     return 0
+
+
+def cmd_wordpress_gravity_forms_export_shape(args: argparse.Namespace) -> int:
+    from .wordpress.gravity_forms import (
+        GravityFormsClient,
+        GravityFormsError,
+        credentials_from_env,
+        export_shape_to_file,
+    )
+
+    try:
+        creds = credentials_from_env(args.profile)
+        client = GravityFormsClient(
+            base_url=args.base_url,
+            consumer_key=creds.consumer_key,
+            consumer_secret=creds.consumer_secret,
+            auth_method=args.auth_method,
+        )
+        out_path = export_shape_to_file(
+            client,
+            args.out,
+            profile=args.profile,
+            limit=args.limit,
+            base_url=args.base_url,
+            form_ids=args.form_id,
+        )
+    except GravityFormsError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    print(out_path)
+    return 0
+
+
+def _build_gravity_forms_client(args: argparse.Namespace):
+    from .wordpress.gravity_forms import credentials_from_env, GravityFormsClient
+
+    creds = credentials_from_env(args.profile)
+    return GravityFormsClient(
+        base_url=args.base_url,
+        consumer_key=creds.consumer_key,
+        consumer_secret=creds.consumer_secret,
+        auth_method=args.auth_method,
+    )
+
+
+def cmd_wordpress_gravity_forms_baseline_direct_inquiry(args: argparse.Namespace) -> int:
+    from .wordpress.gravity_forms import GravityFormsError
+    from .direct_inquiry import gravity_forms as di_gf
+
+    try:
+        client = _build_gravity_forms_client(args)
+        result = di_gf.baseline_direct_inquiry(
+            client,
+            form_ids=args.form_id,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+    except GravityFormsError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    print(result)
+    return 1 if result.get("errors", 0) else 0
+
+
+def cmd_wordpress_gravity_forms_process_direct_inquiry(args: argparse.Namespace) -> int:
+    from .wordpress.gravity_forms import GravityFormsError
+    from .direct_inquiry import gravity_forms as di_gf
+
+    try:
+        client = _build_gravity_forms_client(args)
+        result = di_gf.process_direct_inquiry(
+            client,
+            form_ids=args.form_id,
+            limit=args.limit,
+            dry_run=args.dry_run,
+        )
+    except GravityFormsError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    print(result)
+    return 1 if result.get("read_mark_fail", 0) or result.get("errors", 0) else 0
 
 
 def main(argv: list[str] | None = None) -> int:
