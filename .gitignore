@@ -20,6 +20,9 @@ venv/
 .playwright-cli/
 *.code-workspace
 
+# Local exports / diagnostics
+exports/
+
 # Local OAuth tokens
 **/token.json
 

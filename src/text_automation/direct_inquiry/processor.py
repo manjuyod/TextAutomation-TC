@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
-
-import pandas as pd
 from sqlalchemy import text as sa_text
 
 from ..config import load_config
@@ -48,12 +46,12 @@ def is_phone_blacklisted(phone: str) -> bool:
     return bool(m and m.group(0) in {"0", "1"})
 
 
-def _franchise_by_url_fragment(url: str) -> int:
+def _franchise_by_url_fragment(url: str) -> int | None:
     cfg = load_config()
     for f in cfg.franchises:
         if f.url and f.url.lower() in (url or "").lower():
             return f.id
-    return 1
+    return None
 
 
 def _director_for_fid(fid: int) -> str:
@@ -148,6 +146,74 @@ EXEC [dbo].[usp_CreateInquary]
 """
 
 
+def process_direct_inquiry_payload(
+    *,
+    parent_name: str,
+    student_name: str,
+    phone: str,
+    email_addr: str,
+    grade: str,
+    franchise_id: int,
+    local_dt: datetime | None,
+    dry_run: bool,
+) -> bool:
+    if not parent_name or not email_addr:
+        return False
+
+    if is_phone_blacklisted(phone):
+        if not dry_run:
+            send_message(f"[direct-inquiry] Skipping blacklisted phone for FID={franchise_id}", LOG_BOT, LOG_CHAT)
+        return False
+
+    p_first, p_last = split_name(parent_name)
+    s_first, s_last = split_name(student_name)
+    p_first = sanitize_name_for_sql(p_first)
+    p_last = sanitize_name_for_sql(p_last)
+    s_first = sanitize_name_for_sql(s_first)
+    s_last = sanitize_name_for_sql(s_last)
+    phone = sanitize_name_for_sql(phone)
+    email_addr = sanitize_name_for_sql(email_addr)
+
+    if not local_dt:
+        local_dt = datetime.now()
+    local_date = local_dt.strftime("%Y-%m-%d")
+
+    sql = _build_insert_sql(
+        parent_first=p_first,
+        parent_last=p_last,
+        student_first=s_first,
+        student_last=s_last,
+        phone=phone,
+        email_addr=email_addr,
+        local_date=local_date,
+        franchise_id=franchise_id,
+        grade_sql=_grade_sql(grade),
+    )
+
+    if dry_run:
+        print(f"[direct-inquiry] [dry-run] Would execute SQL/Zapier for FID={franchise_id}")
+        return True
+
+    eng = get_engine()
+    with eng.begin() as conn:
+        send_message(f"[direct-inquiry] Executing SQL for FID={franchise_id}", LOG_BOT, LOG_CHAT)
+        conn.execute(sa_text(sql))
+
+    if franchise_id not in (1, 8):
+        if not send_direct_inquiry(
+            parent_first_name=p_first,
+            student_first_name=s_first,
+            phone=phone,
+            franchise_id=franchise_id,
+            grade_string=grade,
+        ):
+            send_message(f"[direct-inquiry] Zapier failed for FID={franchise_id}", LOG_BOT, LOG_CHAT)
+            raise RuntimeError("Direct inquiry Zapier send failed")
+        send_message(f"[direct-inquiry][ok] SQL+Zapier for FID={franchise_id}", AUTO_BOT or LOG_BOT, AUTO_CHAT or LOG_CHAT)
+
+    return True
+
+
 def _process_one(service, msg_id: str, msg, mode: str, dry_run: bool) -> Optional[bool]:
     cfg = load_config()
     fid = franchise_from_to_header(msg)
@@ -197,10 +263,22 @@ def _process_one(service, msg_id: str, msg, mode: str, dry_run: bool) -> Optiona
     website = extract_website_url_from_soup(soup)
     parent_str, student_str, phone_str, email_str, grade_str = parse_email_for_data_from_html(raw_html)
 
-    # blacklist
+    # route by location fragment on the source URL
+    fid_detected = _franchise_by_url_fragment(website)
+    if not fid_detected:
+        if not dry_run:
+            mark_as_read(service, msg_id)
+        if not dry_run:
+            send_message(
+                f"[direct-inquiry] No configured location fragment found in source URL for message {msg_id}.",
+                LOG_BOT,
+                LOG_CHAT,
+            )
+        return None
+
     if is_phone_blacklisted(phone_str):
         if not dry_run:
-            send_message(f"Phone blacklisted or starts with 0/1: {phone_str}", AUTO_BOT, AUTO_CHAT)
+            send_message(f"[direct-inquiry] Blacklisted phone for message {msg_id}.", LOG_BOT, LOG_CHAT)
             mark_as_read(service, msg_id)
         return None
 
@@ -209,71 +287,31 @@ def _process_one(service, msg_id: str, msg, mode: str, dry_run: bool) -> Optiona
             mark_as_read(service, msg_id)
         return None
 
-    # Names for SQL
-    p_first, p_last = split_name(parent_str)
-    s_first, s_last = split_name(student_str)
-    p_first = sanitize_name_for_sql(p_first)
-    p_last = sanitize_name_for_sql(p_last)
-    s_first = sanitize_name_for_sql(s_first)
-    s_last = sanitize_name_for_sql(s_last)
+    local_dt = localize_timestamp(extract_sent_utc(msg), fid_detected)
+    if not local_dt:
+        local_dt = datetime.now()
 
-    fid_detected = _franchise_by_url_fragment(website)
-    if not fid_detected:
-        fid_detected = fid
-
-    # Local date string
-    from datetime import datetime
-
-    local_dt = local_dt or datetime.now()
-    local_date = local_dt.strftime("%Y-%m-%d")
-
-    sql = _build_insert_sql(
-        parent_first=p_first,
-        parent_last=p_last,
-        student_first=s_first,
-        student_last=s_last,
-        phone=phone_str,
-        email_addr=email_str,
-        local_date=local_date,
-        franchise_id=fid_detected,
-        grade_sql=_grade_sql(grade_str),
-    )
-
-    header = f"[direct-inquiry] FID={fid_detected} Parent={p_first} {p_last} Student={s_first} {s_last} Phone={phone_str}"
-    if dry_run:
-        print(f"[dry-run] Would execute SQL for FID {fid_detected} and send Zapier message")
-        # Unconditional Telegram logs for traceability
-        send_message(header + " [dry-run]", LOG_BOT, LOG_CHAT)
-        try:
-            send_message(sql[:3500] + ("\n..." if len(sql) > 3500 else ""), LOG_BOT, LOG_CHAT)
-        except Exception:
-            pass
-        return True
-
-    # Execute SQL and mark read
-    eng = get_engine()
-    with eng.begin() as conn:
-        # Log before executing
-        send_message(header, LOG_BOT, LOG_CHAT)
-        try:
-            send_message(sql[:3500] + ("\n..." if len(sql) > 3500 else ""), LOG_BOT, LOG_CHAT)
-        except Exception:
-            pass
-        conn.execute(sa_text(sql))
-
-    # Zapier (except FID 1 and 8)
-    if fid_detected not in (1, 8):
-        send_direct_inquiry(
-            parent_first_name=p_first,
-            student_first_name=s_first,
+    try:
+        processed = process_direct_inquiry_payload(
+            parent_name=parent_str,
+            student_name=student_str,
             phone=phone_str,
+            email_addr=email_str,
+            grade=grade_str,
             franchise_id=fid_detected,
-            grade_string=grade_str,
+            local_dt=local_dt,
+            dry_run=dry_run,
         )
-        send_message(f"[direct-inquiry][ok] {header}", AUTO_BOT or LOG_BOT, AUTO_CHAT or LOG_CHAT)
+    except Exception as e:
+        send_message(f"[direct-inquiry] Processing failed for msg {msg_id}: {e}", LOG_BOT, LOG_CHAT)
+        return None
 
-    mark_as_read(service, msg_id)
-    return True
+    if not dry_run and processed:
+        mark_as_read(service, msg_id)
+    elif not dry_run and not processed:
+        mark_as_read(service, msg_id)
+
+    return processed
 
 
 def process(mode: str = "auto", max_results: int = 50, dry_run: bool = False) -> int:

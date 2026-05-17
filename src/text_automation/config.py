@@ -20,6 +20,7 @@ class Franchise:
     address: str = ""
     assess_group: str = ""  # e.g., "vegas", "cali", or "east_q"
     direct_inquiry_only: bool = False
+    preferred_locations: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,14 @@ def _load_toml(path: Path) -> Mapping[str, Any]:
         return {}
     with path.open("rb") as f:
         return tomllib.load(f)
+
+
+def _as_preferred_locations(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        value = [value]
+    return tuple(str(item).strip() for item in value if str(item).strip())
 
 
 def load_config(config_file: Path | None = None) -> Config:
@@ -121,6 +130,7 @@ def load_config(config_file: Path | None = None) -> Config:
                     address=str(obj.get("address", "")),
                     assess_group=str(obj.get("assess_group", "")),
                     direct_inquiry_only=bool(obj.get("direct_inquiry_only", False)),
+                    preferred_locations=_as_preferred_locations(obj.get("preferred_locations", ())),
                 )
             )
         except Exception:

@@ -77,14 +77,14 @@ def send_direct_inquiry(
     phone: str,
     franchise_id: int,
     grade_string: str,
-) -> None:
+) -> bool:
     webhook_env = "ZapHookDirectInquiry2" if int(franchise_id) in DIRECT_INQUIRY2_IDS else "ZapHookDirectInquiry"
     webhook = os.getenv(webhook_env)
     if not webhook and webhook_env != "ZapHookDirectInquiry":
         webhook = os.getenv("ZapHookDirectInquiry")
     if not webhook:
         print(f"Zapier webhook URL is not set ({webhook_env})")
-        return
+        return False
 
     local_now = _get_local_now(franchise_id)
     parent_first_name = _capitalize_name(parent_first_name)
@@ -154,5 +154,7 @@ def send_direct_inquiry(
     try:
         resp = requests.post(webhook, json=payload, timeout=10)
         resp.raise_for_status()
+        return True
     except Exception as e:
         print(f"Error sending message to Zapier: {e}")
+        return False

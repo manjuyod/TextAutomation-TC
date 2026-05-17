@@ -601,6 +601,7 @@ dependencies = [
     { name = "pyodbc" },
     { name = "pypdf2" },
     { name = "requests" },
+    { name = "requests-oauthlib" },
     { name = "sqlalchemy" },
     { name = "tzdata" },
 ]
@@ -614,6 +615,7 @@ requires-dist = [
     { name = "pyodbc", specifier = ">=5.0" },
     { name = "pypdf2", specifier = ">=3.0" },
     { name = "requests", specifier = ">=2.31" },
+    { name = "requests-oauthlib", specifier = ">=2.0" },
     { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "tzdata", specifier = ">=2024.1" },
 ]
