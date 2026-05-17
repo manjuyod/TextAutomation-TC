@@ -115,6 +115,25 @@ def process_direct_inquiry(
         fid, state = _resolve_franchise_id(normalized.location_value, franchises)
         if not fid:
             stats[state] += 1
+            if state == "unmatched":
+                _log_warning(
+                    f"[direct-inquiry][gf] Location resolution unmatched for entry {normalized.entry_id}; "
+                    "marking read without processing.",
+                    dry_run=dry_run,
+                )
+                if dry_run:
+                    continue
+                try:
+                    client.mark_entry_read(normalized.entry_id)
+                    stats["marked_read"] += 1
+                except Exception:
+                    stats["read_mark_fail"] += 1
+                    stats["errors"] += 1
+                    _log_warning(
+                        f"[direct-inquiry][gf] Unmatched entry {normalized.entry_id} could not be marked read; will retry.",
+                        dry_run=dry_run,
+                    )
+                continue
             _log_warning(
                 f"[direct-inquiry][gf] Location resolution {state} for entry {normalized.entry_id}; retry needed.",
                 dry_run=dry_run,

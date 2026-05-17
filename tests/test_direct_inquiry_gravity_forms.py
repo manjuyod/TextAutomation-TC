@@ -411,7 +411,7 @@ def test_gravity_forms_mark_read_failure_after_success_is_reported():
     assert client.marked == ["103"]
 
 
-def test_gravity_forms_unmatched_location_skips_entry_and_does_not_mark_or_process():
+def test_gravity_forms_unmatched_location_is_terminal_and_marked_read():
     entry = {
         "id": "104",
         "form_id": "1",
@@ -432,7 +432,7 @@ def test_gravity_forms_unmatched_location_skips_entry_and_does_not_mark_or_proce
         {"id": 6, "label": "Preferred Club Location", "type": "select"},
     ]}}
     client = _FakeGravityClient({1: [entry]}, forms)
-    client.mark_entry_read_fail = True
+    process_fn = Mock(return_value=True)
     franchises = (
         Franchise(
             id=57,
@@ -451,12 +451,126 @@ def test_gravity_forms_unmatched_location_skips_entry_and_does_not_mark_or_proce
             form_ids=[1],
             limit=1,
             dry_run=False,
-            process_fn=lambda **kwargs: True,
+            process_fn=process_fn,
         )
 
     assert result["unmatched"] == 1
     assert result["processed"] == 0
+    assert result["marked_read"] == 1
+    assert client.marked == ["104"]
+    process_fn.assert_not_called()
+
+
+def test_gravity_forms_unmatched_location_mark_read_failure_is_reported():
+    entry = {
+        "id": "106",
+        "form_id": "1",
+        "date_created": "2026-05-16 08:00:00",
+        "1": "Alex Parent",
+        "2": "Jordan Student",
+        "3": "5551234567",
+        "4": "alex@example.com",
+        "5": "3rd Grade",
+        "6": "Nowhere Land",
+    }
+    forms = {1: {"id": 1, "fields": [
+        {"id": 1, "label": "Parent Name", "type": "name"},
+        {"id": 2, "label": "Student Name", "type": "name"},
+        {"id": 3, "label": "Phone", "type": "phone"},
+        {"id": 4, "label": "Email", "type": "email"},
+        {"id": 5, "label": "Grade", "type": "select"},
+        {"id": 6, "label": "Preferred Club Location", "type": "select"},
+    ]}}
+    client = _FakeGravityClient({1: [entry]}, forms)
+    client.mark_entry_read_fail = True
+    process_fn = Mock(return_value=True)
+    franchises = (
+        Franchise(
+            id=57,
+            name="Gilbert",
+            url="https://tutoringclub.com/gilbertaz/",
+            director="Ryan",
+            email="gilbertaz@tutoringclub.com",
+            timezone="America/Phoenix",
+            preferred_locations=("gilbert",),
+        ),
+    )
+
+    with patch("text_automation.direct_inquiry.gravity_forms.load_config", return_value=FakeConfig(franchises)):
+        result = di_gf.process_direct_inquiry(
+            client,
+            form_ids=[1],
+            limit=1,
+            dry_run=False,
+            process_fn=process_fn,
+        )
+
+    assert result["unmatched"] == 1
+    assert result["processed"] == 0
+    assert result["marked_read"] == 0
+    assert result["read_mark_fail"] == 1
+    assert result["errors"] == 1
+    assert client.marked == ["106"]
+    process_fn.assert_not_called()
+
+
+def test_gravity_forms_ambiguous_location_retries_without_marking_read_or_processing():
+    entry = {
+        "id": "107",
+        "form_id": "1",
+        "date_created": "2026-05-16 08:00:00",
+        "1": "Alex Parent",
+        "2": "Jordan Student",
+        "3": "5551234567",
+        "4": "alex@example.com",
+        "5": "3rd Grade",
+        "6": "Shared",
+    }
+    forms = {1: {"id": 1, "fields": [
+        {"id": 1, "label": "Parent Name", "type": "name"},
+        {"id": 2, "label": "Student Name", "type": "name"},
+        {"id": 3, "label": "Phone", "type": "phone"},
+        {"id": 4, "label": "Email", "type": "email"},
+        {"id": 5, "label": "Grade", "type": "select"},
+        {"id": 6, "label": "Preferred Club Location", "type": "select"},
+    ]}}
+    client = _FakeGravityClient({1: [entry]}, forms)
+    process_fn = Mock(return_value=True)
+    franchises = (
+        Franchise(
+            id=57,
+            name="Gilbert",
+            url="https://tutoringclub.com/gilbertaz/",
+            director="Ryan",
+            email="gilbertaz@tutoringclub.com",
+            timezone="America/Phoenix",
+            preferred_locations=("shared",),
+        ),
+        Franchise(
+            id=20,
+            name="Clovis",
+            url="https://tutoringclub.com/clovisca/",
+            director="Katie",
+            email="clovisca@tutoringclub.com",
+            timezone="America/Los_Angeles",
+            preferred_locations=("shared",),
+        ),
+    )
+
+    with patch("text_automation.direct_inquiry.gravity_forms.load_config", return_value=FakeConfig(franchises)):
+        result = di_gf.process_direct_inquiry(
+            client,
+            form_ids=[1],
+            limit=1,
+            dry_run=False,
+            process_fn=process_fn,
+        )
+
+    assert result["ambiguous"] == 1
+    assert result["processed"] == 0
+    assert result["marked_read"] == 0
     assert client.marked == []
+    process_fn.assert_not_called()
 
 
 def test_gravity_forms_blacklisted_phone_is_terminal_no_send_and_marked_read():
