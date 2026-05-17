@@ -357,6 +357,70 @@ def test_direct_inquiry_payload_escapes_gravity_forms_phone_and_email_sql_litera
     assert "alex''o@example.test" in engine.executed[0]
 
 
+def test_direct_inquiry_payload_dry_run_logs_header_and_sql_without_db_access():
+    with patch("text_automation.direct_inquiry.processor.get_engine") as get_engine, patch(
+        "text_automation.direct_inquiry.processor.send_message"
+    ) as send_message:
+        processed = di_processor.process_direct_inquiry_payload(
+            parent_name="Alex Parent",
+            student_name="Jordan Student",
+            phone="5551234567",
+            email_addr="alex@example.test",
+            grade="3rd Grade",
+            franchise_id=57,
+            local_dt=None,
+            dry_run=True,
+        )
+
+    assert processed is True
+    get_engine.assert_not_called()
+    assert send_message.call_count == 2
+    header = send_message.call_args_list[0].args[0]
+    sql_log = send_message.call_args_list[1].args[0]
+    assert "[direct-inquiry] FID=57" in header
+    assert "[dry-run]" in header
+    assert "EXEC [dbo].[usp_CreateInquary]" in sql_log
+    assert "@ContactFirstName = 'Alex'" in sql_log
+    assert "@Email = 'alex@example.test'" in sql_log
+
+
+def test_direct_inquiry_payload_live_logs_header_and_sql_before_execute():
+    events = []
+
+    class RecordingEngine(_FakeEngine):
+        def execute(self, statement):
+            events.append(("execute", getattr(statement, "text", str(statement))))
+            super().execute(statement)
+
+    engine = RecordingEngine()
+
+    def record_message(message, *_args):
+        events.append(("telegram", message))
+
+    with patch("text_automation.direct_inquiry.processor.get_engine", return_value=engine), patch(
+        "text_automation.direct_inquiry.processor.send_message", side_effect=record_message
+    ):
+        processed = di_processor.process_direct_inquiry_payload(
+            parent_name="Alex Parent",
+            student_name="Jordan Student",
+            phone="5551234567",
+            email_addr="alex@example.test",
+            grade="3rd Grade",
+            franchise_id=1,
+            local_dt=None,
+            dry_run=False,
+        )
+
+    assert processed is True
+    assert len(events) >= 3
+    assert events[0][0] == "telegram"
+    assert "[direct-inquiry] FID=1" in events[0][1]
+    assert events[1][0] == "telegram"
+    assert "EXEC [dbo].[usp_CreateInquary]" in events[1][1]
+    assert events[2][0] == "execute"
+    assert "@Email = 'alex@example.test'" in events[1][1]
+
+
 def test_gravity_forms_mark_read_failure_after_success_is_reported():
     entry = {
         "id": "103",
