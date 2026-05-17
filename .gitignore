@@ -20,6 +20,11 @@ venv/
 .playwright-cli/
 *.code-workspace
 
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # Local exports / diagnostics
 exports/
 
