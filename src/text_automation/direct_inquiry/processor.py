@@ -189,14 +189,19 @@ def process_direct_inquiry_payload(
         franchise_id=franchise_id,
         grade_sql=_grade_sql(grade),
     )
+    header = f"[direct-inquiry] FID={franchise_id} Parent={p_first} {p_last} Student={s_first} {s_last} Phone={phone}"
+    sql_log = sql[:3500] + ("\n..." if len(sql) > 3500 else "")
 
     if dry_run:
         print(f"[direct-inquiry] [dry-run] Would execute SQL/Zapier for FID={franchise_id}")
+        send_message(header + " [dry-run]", LOG_BOT, LOG_CHAT)
+        send_message(sql_log, LOG_BOT, LOG_CHAT)
         return True
 
     eng = get_engine()
     with eng.begin() as conn:
-        send_message(f"[direct-inquiry] Executing SQL for FID={franchise_id}", LOG_BOT, LOG_CHAT)
+        send_message(header, LOG_BOT, LOG_CHAT)
+        send_message(sql_log, LOG_BOT, LOG_CHAT)
         conn.execute(sa_text(sql))
 
     if franchise_id not in (1, 8):
