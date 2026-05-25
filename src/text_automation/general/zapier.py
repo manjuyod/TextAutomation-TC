@@ -137,7 +137,7 @@ def send_direct_inquiry(
             + f"We begin with a personalized learning plan so we can focus on the skills {student_first_name} needs most and build academic confidence. "
             + f"Our next step is a quick 15-minute call to discuss {student_first_name}'s academic needs, our enrollment process, scheduling, and tuition options.\n\n"
             + "Please provide a few times that are most convenient for this phone call. "
-            + "We are available Monday-Thursday 10AM-7PM and Saturday 10A-2PM. "
+            + "We are available Monday-Thursday 10AM-6PM."
             + f"{winter_break_note}"
             + "Looking forward to speaking with you!"
         )
