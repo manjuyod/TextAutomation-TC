@@ -45,7 +45,7 @@ def in_business_window(local_dt: Optional[datetime]) -> bool:
     t = local_dt.time()
     if 0 <= dow <= 3:
         return DEFAULT_WEEKDAY_HOURS.open <= t <= DEFAULT_WEEKDAY_HOURS.close
-    if dow == 5:
-        return DEFAULT_SATURDAY_HOURS.open <= t <= DEFAULT_SATURDAY_HOURS.close
+    #if dow == 5:
+        #return DEFAULT_SATURDAY_HOURS.open <= t <= DEFAULT_SATURDAY_HOURS.close
     return False
 
