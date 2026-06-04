@@ -4,6 +4,7 @@ import os
 import requests
 from datetime import datetime, timezone
 
+from ..accounts.quo import send_payload as send_to_quo
 from ..config import load_config
 from ..direct_inquiry.utils import format_grade_phrase
 from ..direct_inquiry.business_hours import localize_timestamp
@@ -16,6 +17,7 @@ WINTER_BREAK_END_MONTH = 1
 WINTER_BREAK_END_DAY = 4
 DEFAULT_VEGAS_IDS = (6, 11, 15, 16, 60, 110)
 DIRECT_INQUIRY2_IDS = (49, 110)
+QUO_DIRECT_INQUIRY_IDS = (62, 95)
 
 
 def _get_local_now(franchise_id: int):
@@ -78,14 +80,7 @@ def send_direct_inquiry(
     franchise_id: int,
     grade_string: str,
 ) -> bool:
-    webhook_env = "ZapHookDirectInquiry2" if int(franchise_id) in DIRECT_INQUIRY2_IDS else "ZapHookDirectInquiry"
-    webhook = os.getenv(webhook_env)
-    if not webhook and webhook_env != "ZapHookDirectInquiry":
-        webhook = os.getenv("ZapHookDirectInquiry")
-    if not webhook:
-        print(f"Zapier webhook URL is not set ({webhook_env})")
-        return False
-
+    franchise_id = int(franchise_id)
     local_now = _get_local_now(franchise_id)
     parent_first_name = _capitalize_name(parent_first_name)
     student_first_name = _capitalize_name(student_first_name)
@@ -95,7 +90,7 @@ def send_direct_inquiry(
     if _is_on_winter_break(franchise_id, local_now):
         winter_break_note = "We're out for winter break now, but we'll be back on the 5th.\n\n"
 
-    if franchise_id in (62, 95):
+    if franchise_id in QUO_DIRECT_INQUIRY_IDS:
         message = (
             f"Hi {parent_first_name}! This is Michele Tanner from Tutoring Club 😊\n"
             "Thanks so much for reaching out about your student! I just sent you an email — "
@@ -151,6 +146,17 @@ def send_direct_inquiry(
         )
 
     payload = {"message": message, "AssessmentPhone": phone, "FranchiseID": franchise_id}
+    if franchise_id in QUO_DIRECT_INQUIRY_IDS:
+        return send_to_quo(payload)
+
+    webhook_env = "ZapHookDirectInquiry2" if franchise_id in DIRECT_INQUIRY2_IDS else "ZapHookDirectInquiry"
+    webhook = os.getenv(webhook_env)
+    if not webhook and webhook_env != "ZapHookDirectInquiry":
+        webhook = os.getenv("ZapHookDirectInquiry")
+    if not webhook:
+        print(f"Zapier webhook URL is not set ({webhook_env})")
+        return False
+
     try:
         resp = requests.post(webhook, json=payload, timeout=10)
         resp.raise_for_status()
