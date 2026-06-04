@@ -37,6 +37,28 @@ class TestDirectInquiryZapierMessage(unittest.TestCase):
                         payload = mock_post.call_args.kwargs["json"]
                         return payload["message"]
 
+    def _quo_payload_for_franchise(self, franchise_id: int) -> dict:
+        with patch.dict(os.environ, {}, clear=True):
+            with patch(
+                "text_automation.general.zapier._get_local_now",
+                return_value=datetime(2026, 2, 10, 13, 0, tzinfo=timezone.utc),
+            ):
+                with patch("text_automation.general.zapier._is_on_winter_break", return_value=False):
+                    with patch("text_automation.general.zapier.requests.post") as mock_post:
+                        with patch("text_automation.general.zapier.send_to_quo", return_value=True, create=True) as mock_quo:
+                            ok = send_direct_inquiry(
+                                parent_first_name="alex",
+                                student_first_name="jordan",
+                                phone="5551231234",
+                                franchise_id=franchise_id,
+                                grade_string="3rd Grade",
+                            )
+
+        self.assertTrue(ok)
+        mock_post.assert_not_called()
+        mock_quo.assert_called_once()
+        return mock_quo.call_args.args[0]
+
     def test_franchise_20_includes_clovis_hours(self):
         msg = self._message_for_franchise(20)
         self.assertIn("Monday through Thursday from 11 AM to 8 PM.", msg)
@@ -63,8 +85,19 @@ class TestDirectInquiryZapierMessage(unittest.TestCase):
         self.assertIn("Good afternoon Alex, from Tutoring Club of Cadence!", msg)
         self.assertNotIn("from Tutoring Club!", msg)
 
+    def test_franchise_62_routes_to_quo_without_zapier_webhook(self):
+        payload = self._quo_payload_for_franchise(62)
+
+        self.assertEqual(payload["AssessmentPhone"], "5551231234")
+        self.assertEqual(payload["FranchiseID"], 62)
+        self.assertIn("This is Michele Tanner from Tutoring Club", payload["message"])
+
     def test_franchise_95_uses_hodges_michele_copy(self):
-        msg = self._message_for_franchise(95)
+        payload = self._quo_payload_for_franchise(95)
+        msg = payload["message"]
+
+        self.assertEqual(payload["AssessmentPhone"], "5551231234")
+        self.assertEqual(payload["FranchiseID"], 95)
         self.assertEqual(
             msg,
             "Hi Alex! This is Michele Tanner from Tutoring Club 😊\n"

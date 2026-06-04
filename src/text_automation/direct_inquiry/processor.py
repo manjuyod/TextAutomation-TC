@@ -193,7 +193,7 @@ def process_direct_inquiry_payload(
     sql_log = sql[:3500] + ("\n..." if len(sql) > 3500 else "")
 
     if dry_run:
-        print(f"[direct-inquiry] [dry-run] Would execute SQL/Zapier for FID={franchise_id}")
+        print(f"[direct-inquiry] [dry-run] Would execute SQL/direct send for FID={franchise_id}")
         send_message(header + " [dry-run]", LOG_BOT, LOG_CHAT)
         send_message(sql_log, LOG_BOT, LOG_CHAT)
         return True
@@ -212,9 +212,9 @@ def process_direct_inquiry_payload(
             franchise_id=franchise_id,
             grade_string=grade,
         ):
-            send_message(f"[direct-inquiry] Zapier failed for FID={franchise_id}", LOG_BOT, LOG_CHAT)
-            raise RuntimeError("Direct inquiry Zapier send failed")
-        send_message(f"[direct-inquiry][ok] SQL+Zapier for FID={franchise_id}", AUTO_BOT or LOG_BOT, AUTO_CHAT or LOG_CHAT)
+            send_message(f"[direct-inquiry] Direct send failed for FID={franchise_id}", LOG_BOT, LOG_CHAT)
+            raise RuntimeError("Direct inquiry send failed")
+        send_message(f"[direct-inquiry][ok] SQL+direct send for FID={franchise_id}", AUTO_BOT or LOG_BOT, AUTO_CHAT or LOG_CHAT)
 
     return True
 
