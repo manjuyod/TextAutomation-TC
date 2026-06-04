@@ -50,7 +50,7 @@ class TestDirectInquiryZapierMessage(unittest.TestCase):
             "Our next step is a quick 15-minute call to discuss Jordan's academic needs, our enrollment process, scheduling, and tuition options.",
             msg,
         )
-        self.assertIn("We are available Monday-Thursday 10AM-7PM and Saturday 10A-2PM.", msg)
+        self.assertIn("We are available Monday-Thursday 10AM-6PM.", msg)
         self.assertNotIn("Good afternoon Alex, from Tutoring Club!", msg)
         self.assertNotIn("Monday through Thursday From 10 AM to 7 PM, and Saturday From 10 AM to 2 PM.", msg)
 
