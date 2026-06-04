@@ -14,7 +14,7 @@ class Hours:
     close: time
 
 
-DEFAULT_WEEKDAY_HOURS = Hours(time(10, 0, 0), time(19, 0, 0))  # Mon-Thu
+DEFAULT_WEEKDAY_HOURS = Hours(time(10, 0, 0), time(18, 0, 0))  # Mon-Thu
 DEFAULT_SATURDAY_HOURS = Hours(time(10, 0, 0), time(14, 0, 0))  # Sat
 
 
