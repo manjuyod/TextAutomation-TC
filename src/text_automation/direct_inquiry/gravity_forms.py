@@ -7,7 +7,7 @@ from typing import Any, Iterable, Mapping, Sequence
 from urllib.parse import urlparse
 
 from ..config import Franchise, load_config
-from ..direct_inquiry.business_hours import localize_timestamp
+from ..direct_inquiry.business_hours import in_business_window, localize_timestamp
 from ..direct_inquiry.processor import is_phone_blacklisted, process_direct_inquiry_payload
 from ..general.telegram import LOG_BOT, LOG_CHAT, send_message
 from ..wordpress.gravity_forms import GravityFormsClient
@@ -74,6 +74,7 @@ def process_direct_inquiry(
         "ambiguous": 0,
         "invalid": 0,
         "terminal_skipped": 0,
+        "in_hours_skipped": 0,
         "errors": 0,
         "read_mark_fail": 0,
         "dry_run": 1 if dry_run else 0,
@@ -81,6 +82,8 @@ def process_direct_inquiry(
 
     cfg = load_config()
     franchises = cfg.franchises
+    di_cfg = getattr(cfg, "direct_inquiry", None)
+    vegas_ids = tuple(getattr(di_cfg, "vegas_ids", ()) or (6, 11, 15, 16, 60, 110))
 
     entries = list(_iter_unread_entries(
         client,
@@ -143,6 +146,23 @@ def process_direct_inquiry(
         local_dt = localize_timestamp(_coerce_local_dt(normalized.created_dt), fid) if normalized.created_dt else None
         if not local_dt:
             local_dt = datetime.now(timezone.utc)
+
+        if int(fid) in vegas_ids and in_business_window(local_dt):
+            stats["in_hours_skipped"] += 1
+            stats["terminal_skipped"] += 1
+            if dry_run:
+                continue
+            try:
+                client.mark_entry_read(normalized.entry_id)
+                stats["marked_read"] += 1
+            except Exception:
+                stats["read_mark_fail"] += 1
+                stats["errors"] += 1
+                _log_warning(
+                    f"[direct-inquiry][gf] In-hours Vegas entry {normalized.entry_id} could not be marked read; will retry.",
+                    dry_run=dry_run,
+                )
+            continue
 
         try:
             processed = process_fn(
