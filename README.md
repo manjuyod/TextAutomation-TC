@@ -82,6 +82,7 @@ Direct Inquiry (Gravity Forms + Gmail)
 - Live pull:
   - `uv run text-automation wordpress gravity-forms process-direct-inquiry --limit 50 --dry-run`
   - Remove `--dry-run` to execute SQL/Zapier and mark Gravity Forms entries read after success.
+  - Vegas Gravity Forms entries submitted during business hours are marked read without SQL/Zapier; after-hours entries still process.
   - Entries with no configured location match are terminal-skipped and marked read without SQL/Zapier; ambiguous matches and processing failures stay unread for retry/investigation.
 - Gmail remains for location-specific notification emails only.
 - Env: `InquiryAutoAPI` must contain the Gmail OAuth client JSON (as a string). First run opens a browser and writes a token to `src/text_automation/direct_inquiry/token.json` (configurable in `text_automation.toml`).

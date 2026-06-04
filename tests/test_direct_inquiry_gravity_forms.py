@@ -83,8 +83,15 @@ def _message_with_html(html: str) -> tuple[Mock, EmailMessage]:
 
 
 class FakeConfig:
-    def __init__(self, franchises):
+    def __init__(self, franchises, direct_inquiry=None):
         self.franchises = franchises
+        if direct_inquiry is not None:
+            self.direct_inquiry = direct_inquiry
+
+
+class FakeDirectInquiryConfig:
+    def __init__(self, vegas_ids=(6, 11, 15, 16, 60, 110)):
+        self.vegas_ids = vegas_ids
 
 
 class _FakeEngine:
@@ -102,6 +109,44 @@ class _FakeEngine:
 
     def execute(self, statement):
         self.executed.append(getattr(statement, "text", str(statement)))
+
+
+def _gravity_direct_inquiry_form():
+    return {1: {"id": 1, "fields": [
+        {"id": 1, "label": "Parent Name", "type": "name"},
+        {"id": 2, "label": "Student Name", "type": "name"},
+        {"id": 3, "label": "Phone", "type": "phone"},
+        {"id": 4, "label": "Email", "type": "email"},
+        {"id": 5, "label": "Grade", "type": "select"},
+        {"id": 6, "label": "Preferred Club Location", "type": "select"},
+    ]}}
+
+
+def _gravity_direct_inquiry_entry(entry_id, *, date_created, location):
+    return {
+        "id": entry_id,
+        "form_id": "1",
+        "date_created": date_created,
+        "1": "Alex Parent",
+        "2": "Jordan Student",
+        "3": "5551234567",
+        "4": "alex@example.com",
+        "5": "3rd Grade",
+        "6": location,
+    }
+
+
+def _franchise(fid, name, *, timezone="America/Los_Angeles", preferred_locations=None):
+    slug = name.lower().replace(" ", "")
+    return Franchise(
+        id=fid,
+        name=name,
+        url=f"https://tutoringclub.com/{slug}/",
+        director="Director",
+        email=f"{slug}@tutoringclub.com",
+        timezone=timezone,
+        preferred_locations=preferred_locations or (name.lower(),),
+    )
 
 
 def test_gmail_no_location_no_mark_read_and_no_sql_text():
@@ -251,6 +296,108 @@ def test_gravity_forms_process_marks_read_only_after_processing_success():
         assert result["marked_read"] == 1
         assert client.marked == ["101"]
         assert len(called) == 1
+
+
+def test_gravity_forms_vegas_in_hours_marks_read_without_processing():
+    entry = _gravity_direct_inquiry_entry("801", date_created="2026-06-01 18:00:00", location="Anthem")
+    client = _FakeGravityClient({1: [entry]}, _gravity_direct_inquiry_form())
+    process_fn = Mock(return_value=True)
+    franchises = (_franchise(6, "Anthem", preferred_locations=("anthem",)),)
+
+    with patch(
+        "text_automation.direct_inquiry.gravity_forms.load_config",
+        return_value=FakeConfig(franchises, FakeDirectInquiryConfig(vegas_ids=(6,))),
+    ):
+        result = di_gf.process_direct_inquiry(
+            client,
+            form_ids=[1],
+            limit=1,
+            dry_run=False,
+            process_fn=process_fn,
+        )
+
+    assert result["in_hours_skipped"] == 1
+    assert result["terminal_skipped"] == 1
+    assert result["processed"] == 0
+    assert result["marked_read"] == 1
+    assert client.marked == ["801"]
+    process_fn.assert_not_called()
+
+
+def test_gravity_forms_vegas_in_hours_dry_run_does_not_mark_or_process():
+    entry = _gravity_direct_inquiry_entry("802", date_created="2026-06-01 18:00:00", location="Anthem")
+    client = _FakeGravityClient({1: [entry]}, _gravity_direct_inquiry_form())
+    process_fn = Mock(return_value=True)
+    franchises = (_franchise(6, "Anthem", preferred_locations=("anthem",)),)
+
+    with patch(
+        "text_automation.direct_inquiry.gravity_forms.load_config",
+        return_value=FakeConfig(franchises, FakeDirectInquiryConfig(vegas_ids=(6,))),
+    ):
+        result = di_gf.process_direct_inquiry(
+            client,
+            form_ids=[1],
+            limit=1,
+            dry_run=True,
+            process_fn=process_fn,
+        )
+
+    assert result["in_hours_skipped"] == 1
+    assert result["terminal_skipped"] == 1
+    assert result["processed"] == 0
+    assert result["marked_read"] == 0
+    assert client.marked == []
+    process_fn.assert_not_called()
+
+
+def test_gravity_forms_vegas_after_hours_still_processes():
+    entry = _gravity_direct_inquiry_entry("803", date_created="2026-06-02 04:00:00", location="Anthem")
+    client = _FakeGravityClient({1: [entry]}, _gravity_direct_inquiry_form())
+    process_fn = Mock(return_value=True)
+    franchises = (_franchise(6, "Anthem", preferred_locations=("anthem",)),)
+
+    with patch(
+        "text_automation.direct_inquiry.gravity_forms.load_config",
+        return_value=FakeConfig(franchises, FakeDirectInquiryConfig(vegas_ids=(6,))),
+    ):
+        result = di_gf.process_direct_inquiry(
+            client,
+            form_ids=[1],
+            limit=1,
+            dry_run=False,
+            process_fn=process_fn,
+        )
+
+    assert result["in_hours_skipped"] == 0
+    assert result["processed"] == 1
+    assert result["marked_read"] == 1
+    assert client.marked == ["803"]
+    process_fn.assert_called_once()
+
+
+def test_gravity_forms_non_vegas_in_hours_still_processes():
+    entry = _gravity_direct_inquiry_entry("804", date_created="2026-06-01 18:00:00", location="Clovis")
+    client = _FakeGravityClient({1: [entry]}, _gravity_direct_inquiry_form())
+    process_fn = Mock(return_value=True)
+    franchises = (_franchise(20, "Clovis", preferred_locations=("clovis",)),)
+
+    with patch(
+        "text_automation.direct_inquiry.gravity_forms.load_config",
+        return_value=FakeConfig(franchises, FakeDirectInquiryConfig(vegas_ids=(6,))),
+    ):
+        result = di_gf.process_direct_inquiry(
+            client,
+            form_ids=[1],
+            limit=1,
+            dry_run=False,
+            process_fn=process_fn,
+        )
+
+    assert result["in_hours_skipped"] == 0
+    assert result["processed"] == 1
+    assert result["marked_read"] == 1
+    assert client.marked == ["804"]
+    process_fn.assert_called_once()
 
 
 def test_gravity_forms_normalizes_multi_input_name_fields_and_form_id_fallback():
