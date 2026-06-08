@@ -90,7 +90,7 @@ preferred_locations = ["235", "fresno", "fresnoca", "fresno ca"]
 
 [[franchises]]
 id = 49
-name = "Tutoring Club Bakersfield"
+name = "Tutoring Club of Bakersfield"
 url = "https://tutoringclub.com/bakersfieldca/"
 director = "Amanda"
 email = "bakersfieldca@tutoringclub.com"

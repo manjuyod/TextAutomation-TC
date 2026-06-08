@@ -134,6 +134,36 @@ Assessments and Meetings
     - Otherwise default to guardian
   - Implemented in: `src/text_automation/meetings/runner.py:_resolve_parent_names`
 
+Inquiry Follow-Up
+-----------------
+
+- Purpose: Send a conservative follow-up text to older SQL Server records whose computed status is `Inquiry` or `Lead`.
+- SQL Server env: `CRMSrvAddress`, `CRMSrvUs`, `CRMSrvPs`, `CRMSrvDb`
+- Zapier routing:
+  - Defaults to meeting webhook routing by franchise `assess_group`: `ZapHookMeetingGilVeg` for vegas, `ZapHookMeetingCali` for cali.
+  - Override per run with `--webhook-env SomeEnvVar` if a dedicated inquiry follow-up webhook is needed.
+- Cache:
+  - Uses SQLite table `InquiryFollowupCache` from `[reporting].database`.
+  - Apply `scripts/sqlite_migrations.sql` before first live use; do not directly edit or commit the SQLite DB binary.
+  - Sends once per `InquiryID`. State moves `No -> Sending -> Yes`; failed live sends roll back to `No`.
+- Eligibility:
+  - Default centers are `87,49`.
+  - Default date window is inquiries from 7 to 90 days old.
+  - Use `--since YYYY-MM-DD` for an explicit historical backfill lower bound.
+  - SQL filters to `Status IN ('Inquiry', 'Lead')`, and the runner repeats the same status guard before caching or sending.
+  - Non-follow-up statuses such as `Enrolled`, `Deleted`, `Meeting`, `Meeting Follow Up`, `Assessment`, and `Other` are skipped and summarized without PII.
+- CLI:
+  - Dry-run preview: `uv run text-automation inquiry-followup run --dry-run`
+  - Standard live run: `uv run text-automation inquiry-followup run`
+  - Summer copy preview: `uv run text-automation inquiry-followup run --summer --dry-run`
+  - Explicit centers and window: `uv run text-automation inquiry-followup run --franchise-id 87,49 --lookback-days 90 --min-age-days 7 --dry-run`
+  - Historical backfill preview: `uv run text-automation inquiry-followup run --since 2026-01-01 --dry-run`
+- Live guardrails:
+  - `--batch-size` is capped at 50.
+  - `--max-batches` is capped at 4, for a practical max of 200 live sends per run.
+  - Live `--sleep-seconds` is forced to at least 3 seconds between sends.
+  - No `--dry-run` means live webhook posts.
+
 Windows Helpers
 ---------------
 
@@ -145,9 +175,12 @@ Windows Helpers
   - scripts/meetings_morning_57.bat  runs Meeting2 for franchise 57
   - scripts/meetings_morning_rest.bat  runs Meeting2 for all other configured franchises
   - scripts/combined_followup_workflow.bat - runs Gravity Forms Direct Inquiry, location-specific Gmail Direct Inquiry, Assessment1 scheduled, Meeting1 scheduled, and Student Intake (passes through extra args like --dry-run)
+  - scripts/inquiry_followup_quarterly.bat - runs only Inquiry Follow-Up and forwards all extra args with `%*`, e.g. `scripts\inquiry_followup_quarterly.bat --max-batches 4 --dry-run`
   - scripts/direct_inquiry_gravity_forms_baseline.bat - marks unread main-site Gravity Forms Direct Inquiry entries read without SQL/Zapier. Run with --dry-run first.
   - scripts/direct_inquiry_auto.bat - runs Gravity Forms Direct Inquiry first, then location-specific Gmail Direct Inquiry. Pass --dry-run to avoid DB/Zapier/mark-as-read.
   - scripts/student_intake_auto.bat  runs Student Intake (max=50). Pass --dry-run to preview; note: dry-run still marks Gmail messages as read.
+
+- For Task Scheduler, put the script path in "Program/script" and pass inquiry follow-up flags through "Add arguments (optional)"; the quarterly BAT forwards those flags directly to the CLI.
 
 For Maintainers
 ---------------
@@ -203,6 +236,7 @@ Reporting Utilities
     - Scheduled upsert resets `IsText` to `'No'` when date/time changes.
 - Monthly delete (day 1) only removes rows with `IsText='Yes'` that are missing by primary key (AssessmentID/MeetingID).
  - Partial unique indexes on server PKs (AssessmentID/MeetingID) prevent duplicate rows in caches. Apply with `sqlite3 src/text_automation/reporting/TextDatabase.db < scripts/sqlite_migrations.sql`.
+- The same migration file creates `InquiryFollowupCache` and its indexes for inquiry follow-up idempotency. If a local environment already created the old lowercase table name, rename it once with `ALTER TABLE inquiry_followup_cache RENAME TO InquiryFollowupCache;`, then rerun the migration SQL.
 
 Telegram Logging
 ----------------
@@ -220,6 +254,7 @@ Config Requirements
 - SQL Server env: `CRMSrvAddress`, `CRMSrvUs`, `CRMSrvPs`, `CRMSrvDb`
 - Reporting DB: `TEXT_AUTOMATION_REPORT_DB` or `[reporting].database` in TOML
 - Zapier hooks: `ZapHookAssessGilVeg`, `ZapHookAssessCali`, `ZapHookMeetingGilVeg`, `ZapHookMeetingCali`
+- Inquiry Follow-Up uses `ZapHookMeetingGilVeg`/`ZapHookMeetingCali` by default unless `--webhook-env` points to another webhook env var.
 - Optional: extend business hours via TOML later and wire into `direct_inquiry/business_hours.py`.
 
 What I Did

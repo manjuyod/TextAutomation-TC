@@ -160,19 +160,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     # inquiry follow-up
     p_if = subparsers.add_parser(
-        "inquiry-followup", help="Inquiry follow-up (3-month slice)"
+        "inquiry-followup", help="Inquiry follow-up by last contact recency"
     )
     if_sub = p_if.add_subparsers(dest="if_cmd")
     p_if_run = if_sub.add_parser("run", help="Run follow-up selection and send")
-    p_if_run.add_argument("--franchise-id", type=int, default=87)
-    p_if_run.add_argument("--limit", type=int, default=None)
+    p_if_run.add_argument("--franchise-id", default="87,49")
+    p_if_run.add_argument("--since", default=None, help="ISO8601 lower bound override (server date)")
+    p_if_run.add_argument("--lookback-days", type=int, default=90, help="Search window lower bound in days")
+    p_if_run.add_argument("--min-age-days", type=int, default=7, help="Max age in days to send")
+    p_if_run.add_argument("--summer", action="store_true", help="Use summer message variant with local greeting")
     p_if_run.add_argument(
         "--webhook-env",
         type=str,
         default=None,
         help="Env var name for Zap webhook (e.g., ZapHookInquiryFollowup)",
     )
-    p_if_run.add_argument("--live", action="store_true", help="Send live (omit to dry-run)")
+    p_if_run.add_argument("--dry-run", action="store_true", help="Skip webhook posts")
+    p_if_run.add_argument("--batch-size", type=int, default=50, help="Per-batch send limit (max 50)")
+    p_if_run.add_argument("--max-batches", type=int, default=1, help="Max number of batches to send in one run")
+    p_if_run.add_argument("--sleep-seconds", type=float, default=3, help="Delay between sends when live")
     p_if_run.set_defaults(func=cmd_inquiry_followup_run)
 
     # wordpress / gravity forms shape study
@@ -396,10 +402,16 @@ def cmd_inquiry_followup_run(args: argparse.Namespace) -> int:
     from .inquiry_followup import run as if_run
 
     count = if_run(
-        franchise_id=args.franchise_id,
-        limit=args.limit,
+        franchise_ids=_parse_id_list(args.franchise_id),
+        since=args.since,
+        lookback_days=args.lookback_days,
+        min_age_days=args.min_age_days,
+        summer=args.summer,
         webhook_env=args.webhook_env,
-        dry_run=(not args.live),
+        batch_size=args.batch_size,
+        max_batches=args.max_batches,
+        sleep_seconds=args.sleep_seconds,
+        dry_run=args.dry_run,
     )
     print(count)
     return 0

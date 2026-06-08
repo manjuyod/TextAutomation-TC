@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from text_automation.db.sql import get_db_data
+from datetime import datetime, timedelta
+from typing import Iterable
+
+import pandas as pd
+from sqlalchemy import text
+
+from ..db.sql import get_engine
 
 
 INQUIRY_SQL = """
@@ -10,14 +16,10 @@ SELECT * FROM (
         tblInquiry.CFirstName AS [CFirstName],
         tblInquiryStudents.FirstName AS [StudentFirstName],
         tblInquiry.Date AS [DateInput],
+        tblInquiry.FranchiesId AS [FranchiseID],
         tblInquiry.ContactPhone AS [ContactPhone],
         tblInquiry.Email AS [Email],
         tblStudents.HomeAddress AS [HomeAddress],
-        CASE
-            WHEN tblStudents.Grade IS NOT NULL AND tblStudents.Grade <> '' THEN tblStudents.Grade
-            ELSE tblInquiryStudents.Grade
-        END AS [Grade],
-        tblFranchies.FranchiesName AS [FranchiseName],
         CASE
             WHEN EXISTS (
                 SELECT 1 FROM tblStudents 
@@ -38,26 +40,72 @@ SELECT * FROM (
     LEFT JOIN tblInvoiceStudents ON tblInquiry.Id = tblInvoiceStudents.InquiryId
     LEFT JOIN tblStudents ON tblInquiry.Id = tblStudents.InquiryId
     LEFT JOIN tblInquiryStudents ON tblInquiry.ID = tblInquiryStudents.InquiryID
-    LEFT JOIN tblFranchies ON tblInquiry.FranchiesId = tblFranchies.ID
-    WHERE tblInquiry.FranchiesId = :franchise_id
-      AND tblInquiry.Date >= DATEADD(MONTH, -:months_back, CAST(GETDATE() AS date))
-      AND tblInquiry.Date <= GETDATE()
+    WHERE tblInquiry.FranchiesId IN ({franchise_clause})
+      AND tblInquiry.Date >= :lower_bound
+      AND tblInquiry.Date <= :upper_bound
       AND tblInquiry.ContactPhone IS NOT NULL AND tblInquiry.ContactPhone <> ''
 ) AS SubQuery
-WHERE SubQuery.Status = 'Inquiry'
+WHERE SubQuery.Status IN ('Inquiry', 'Lead')
 ORDER BY SubQuery.[DateInput] ASC
+OFFSET :offset ROWS FETCH NEXT :chunk_size ROWS ONLY
 """
 
 
-def fetch_inquiries(franchise_id: int, months_back: int = 3, limit: int | None = None):
-    sql = INQUIRY_SQL
-    if limit is not None:
-        # Insert TOP into the inner SELECT DISTINCT to bound the result size
-        sql = sql.replace(
-            "SELECT DISTINCT\n        tblInquiry.ID AS [InquiryID]",
-            f"SELECT DISTINCT TOP {int(limit)}\n        tblInquiry.ID AS [InquiryID]",
-            1,
-        )
-    params = {"franchise_id": int(franchise_id), "months_back": int(months_back)}
-    return get_db_data(sql, params)
+def _build_franchise_clause(franchise_ids: Iterable[int] | None = None) -> str:
+    ids = [int(x) for x in (franchise_ids or [87, 49]) if x is not None]
+    if not ids:
+        ids = [87, 49]
+    return ",".join(str(int(x)) for x in ids)
 
+
+def _build_bounds(
+    *,
+    since: str | None = None,
+    lookback_days: int = 90,
+    min_age_days: int = 7,
+) -> tuple[str, str]:
+    today = datetime.now().date()
+    if since:
+        lower_bound = str(since)
+    else:
+        lower_bound = (today - timedelta(days=max(int(lookback_days), 0))).isoformat()
+    upper_bound = (today - timedelta(days=max(int(min_age_days), 0))).isoformat()
+    return lower_bound, upper_bound
+
+
+def fetch_inquiries(
+    franchise_ids: Iterable[int] | None = None,
+    *,
+    since: str | None = None,
+    lookback_days: int = 90,
+    min_age_days: int = 7,
+    chunk_size: int = 250,
+) -> pd.DataFrame:
+    franchise_clause = _build_franchise_clause(franchise_ids)
+    lower_bound, upper_bound = _build_bounds(
+        since=since, lookback_days=lookback_days, min_age_days=min_age_days
+    )
+
+    q = INQUIRY_SQL.format(franchise_clause=franchise_clause)
+    params = {
+        "lower_bound": lower_bound,
+        "upper_bound": upper_bound,
+        "chunk_size": int(chunk_size) if int(chunk_size) > 0 else 250,
+        "offset": 0,
+    }
+
+    engine = get_engine()
+    chunks: list[pd.DataFrame] = []
+    with engine.connect() as conn:
+        while True:
+            chunk = pd.read_sql_query(text(q), conn, params=params)
+            if chunk.empty:
+                break
+            chunks.append(chunk)
+            params["offset"] += len(chunk)
+            if len(chunk) < params["chunk_size"]:
+                break
+
+    if not chunks:
+        return pd.DataFrame()
+    return pd.concat(chunks, ignore_index=True)
