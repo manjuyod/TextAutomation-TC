@@ -59,6 +59,98 @@ class TestDirectInquiryZapierMessage(unittest.TestCase):
         mock_quo.assert_called_once()
         return mock_quo.call_args.args[0]
 
+    def test_franchise_62_sends_gmail_before_quo_when_email_is_present(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch(
+                "text_automation.general.zapier._get_local_now",
+                return_value=datetime(2026, 2, 10, 13, 0, tzinfo=timezone.utc),
+            ):
+                with patch("text_automation.general.zapier._is_on_winter_break", return_value=False):
+                    events = []
+
+                    def record_gmail(**kwargs):
+                        events.append(("gmail", kwargs))
+                        return {"id": "gmail-id"}
+
+                    def record_quo(payload):
+                        events.append(("quo", payload))
+                        return True
+
+                    with patch("text_automation.general.zapier.requests.post") as mock_post:
+                        with patch("text_automation.general.zapier.send_to_quo", side_effect=record_quo, create=True):
+                            with patch(
+                                "text_automation.general.zapier.send_jacksonville_hodges_direct_inquiry_email",
+                                side_effect=record_gmail,
+                                create=True,
+                            ):
+                                ok = send_direct_inquiry(
+                                    parent_first_name="alex",
+                                    student_first_name="jordan",
+                                    phone="5551231234",
+                                    franchise_id=62,
+                                    grade_string="3rd Grade",
+                                    email_addr="alex@example.com",
+                                )
+
+        self.assertTrue(ok)
+        mock_post.assert_not_called()
+        self.assertEqual([event[0] for event in events], ["gmail", "quo"])
+        self.assertEqual(events[0][1]["recipient_email"], "alex@example.com")
+        self.assertEqual(events[0][1]["franchise_id"], 62)
+
+    def test_franchise_95_gmail_failure_prevents_quo_and_returns_false(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch(
+                "text_automation.general.zapier._get_local_now",
+                return_value=datetime(2026, 2, 10, 13, 0, tzinfo=timezone.utc),
+            ):
+                with patch("text_automation.general.zapier._is_on_winter_break", return_value=False):
+                    with patch("text_automation.general.zapier.requests.post") as mock_post:
+                        with patch("text_automation.general.zapier.send_to_quo", return_value=True, create=True) as mock_quo:
+                            with patch(
+                                "text_automation.general.zapier.send_jacksonville_hodges_direct_inquiry_email",
+                                side_effect=RuntimeError("gmail failed"),
+                                create=True,
+                            ):
+                                ok = send_direct_inquiry(
+                                    parent_first_name="alex",
+                                    student_first_name="jordan",
+                                    phone="5551231234",
+                                    franchise_id=95,
+                                    grade_string="3rd Grade",
+                                    email_addr="alex@example.com",
+                                )
+
+        self.assertFalse(ok)
+        mock_post.assert_not_called()
+        mock_quo.assert_not_called()
+
+    def test_non_quo_franchise_does_not_call_gmail_helper(self):
+        with patch.dict(os.environ, {"ZapHookDirectInquiry": "https://example.test/hook"}, clear=False):
+            with patch(
+                "text_automation.general.zapier._get_local_now",
+                return_value=datetime(2026, 2, 10, 13, 0, tzinfo=timezone.utc),
+            ):
+                with patch("text_automation.general.zapier._is_on_winter_break", return_value=False):
+                    with patch("text_automation.general.zapier.requests.post") as mock_post:
+                        mock_post.return_value = _DummyResponse()
+                        with patch(
+                            "text_automation.general.zapier.send_jacksonville_hodges_direct_inquiry_email",
+                            create=True,
+                        ) as mock_gmail:
+                            ok = send_direct_inquiry(
+                                parent_first_name="alex",
+                                student_first_name="jordan",
+                                phone="5551231234",
+                                franchise_id=57,
+                                grade_string="3rd Grade",
+                                email_addr="alex@example.com",
+                            )
+
+        self.assertTrue(ok)
+        self.assertTrue(mock_post.called)
+        mock_gmail.assert_not_called()
+
     def test_franchise_20_includes_clovis_hours(self):
         msg = self._message_for_franchise(20)
         self.assertIn("Monday through Thursday from 11 AM to 8 PM.", msg)

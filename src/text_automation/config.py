@@ -21,6 +21,7 @@ class Franchise:
     assess_group: str = ""  # e.g., "vegas", "cali", or "east_q"
     direct_inquiry_only: bool = False
     preferred_locations: tuple[str, ...] = ()
+    direct_inquiry_booking_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -131,6 +132,7 @@ def load_config(config_file: Path | None = None) -> Config:
                     assess_group=str(obj.get("assess_group", "")),
                     direct_inquiry_only=bool(obj.get("direct_inquiry_only", False)),
                     preferred_locations=_as_preferred_locations(obj.get("preferred_locations", ())),
+                    direct_inquiry_booking_url=str(obj.get("direct_inquiry_booking_url", "")),
                 )
             )
         except Exception:

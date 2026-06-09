@@ -568,6 +568,28 @@ def test_direct_inquiry_payload_live_logs_header_and_sql_before_execute():
     assert "@Email = 'alex@example.test'" in events[1][1]
 
 
+def test_direct_inquiry_payload_passes_parent_email_to_direct_send():
+    engine = _FakeEngine()
+
+    with patch("text_automation.direct_inquiry.processor.get_engine", return_value=engine), patch(
+        "text_automation.direct_inquiry.processor.send_message"
+    ), patch("text_automation.direct_inquiry.processor.send_direct_inquiry", return_value=True) as mock_send:
+        processed = di_processor.process_direct_inquiry_payload(
+            parent_name="Alex Parent",
+            student_name="Jordan Student",
+            phone="5551234567",
+            email_addr="alex'o@example.test",
+            grade="3rd Grade",
+            franchise_id=62,
+            local_dt=None,
+            dry_run=False,
+        )
+
+    assert processed is True
+    mock_send.assert_called_once()
+    assert mock_send.call_args.kwargs["email_addr"] == "alex''o@example.test"
+
+
 def test_gravity_forms_mark_read_failure_after_success_is_reported():
     entry = {
         "id": "103",

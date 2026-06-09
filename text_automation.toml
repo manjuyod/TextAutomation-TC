@@ -248,6 +248,7 @@ assessment_form = "https://tutoringclub.com/jacksonvillefl/student-intake-form/"
 payment_form = "https://tutoringclub.com/jacksonvillefl/assessment-payment-form/"
 address = "13546 Beach Boulevard Jacksonville, FL 32224 US"
 assess_group = "east_q"
+direct_inquiry_booking_url = ""
 
 [[franchises]]
 id = 95
@@ -260,6 +261,7 @@ assessment_form = "https://tutoringclub.com/hodgesfl/student-intake-form/"
 payment_form = "https://tutoringclub.com/hodgesfl/assessment-payment-form/"
 address = "13546 Beach Boulevard Jacksonville, FL 32224 US"
 assess_group = "east_q"
+direct_inquiry_booking_url = ""
 
 [[franchises]]
 id = 103

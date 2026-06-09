@@ -4,6 +4,7 @@ import os
 import requests
 from datetime import datetime, timezone
 
+from ..accounts.gmail import send_jacksonville_hodges_direct_inquiry_email
 from ..accounts.quo import send_payload as send_to_quo
 from ..config import load_config
 from ..direct_inquiry.utils import format_grade_phrase
@@ -79,6 +80,7 @@ def send_direct_inquiry(
     phone: str,
     franchise_id: int,
     grade_string: str,
+    email_addr: str | None = None,
 ) -> bool:
     franchise_id = int(franchise_id)
     local_now = _get_local_now(franchise_id)
@@ -147,6 +149,17 @@ def send_direct_inquiry(
 
     payload = {"message": message, "AssessmentPhone": phone, "FranchiseID": franchise_id}
     if franchise_id in QUO_DIRECT_INQUIRY_IDS:
+        if str(email_addr or "").strip():
+            try:
+                send_jacksonville_hodges_direct_inquiry_email(
+                    parent_first_name=parent_first_name,
+                    student_first_name=student_first_name,
+                    recipient_email=str(email_addr or "").strip(),
+                    franchise_id=franchise_id,
+                )
+            except Exception as e:
+                print({"direct_inquiry_gmail": {"send": "error", "franchise_id": franchise_id, "error": str(e)}})
+                return False
         return send_to_quo(payload)
 
     webhook_env = "ZapHookDirectInquiry2" if franchise_id in DIRECT_INQUIRY2_IDS else "ZapHookDirectInquiry"

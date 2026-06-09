@@ -211,6 +211,7 @@ def process_direct_inquiry_payload(
             phone=phone,
             franchise_id=franchise_id,
             grade_string=grade,
+            email_addr=email_addr,
         ):
             send_message(f"[direct-inquiry] Direct send failed for FID={franchise_id}", LOG_BOT, LOG_CHAT)
             raise RuntimeError("Direct inquiry send failed")
