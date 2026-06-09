@@ -28,6 +28,11 @@ venv/
 # Local exports / diagnostics
 exports/
 
+# Local SQLite reporting databases
+src/text_automation/reporting/*.db
+src/text_automation/reporting/*.sqlite
+src/text_automation/reporting/*.sqlite3
+
 # Local OAuth tokens
 **/token.json
 
