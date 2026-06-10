@@ -126,6 +126,69 @@ def test_build_raw_message_sets_headers_and_body():
     assert msg.get_content().strip() == "bruh"
 
 
+def test_build_raw_message_can_include_html_alternative():
+    from text_automation.accounts.gmail import client
+
+    raw = client.build_raw_message(
+        sender_email="jacksonvillefl@tutoringclub.com",
+        recipients=["bmillares@tutoringclub.com"],
+        subject="HTML",
+        body="Plain fallback",
+        html_body="<p><strong>HTML body</strong></p>",
+    )
+
+    decoded = base64.urlsafe_b64decode(raw.encode("ascii"))
+    msg = message_from_bytes(decoded, policy=policy.default)
+    assert msg["From"] == "jacksonvillefl@tutoringclub.com"
+    assert msg["To"] == "bmillares@tutoringclub.com"
+    assert msg["Subject"] == "HTML"
+    assert msg.is_multipart()
+
+    plain = msg.get_body(preferencelist=("plain",))
+    html = msg.get_body(preferencelist=("html",))
+    assert plain is not None
+    assert html is not None
+    assert plain.get_content().strip() == "Plain fallback"
+    assert "<strong>HTML body</strong>" in html.get_content()
+
+
+def test_build_raw_message_can_include_inline_images():
+    from text_automation.accounts.gmail import client
+
+    raw = client.build_raw_message(
+        sender_email="jacksonvillefl@tutoringclub.com",
+        recipients=["bmillares@tutoringclub.com"],
+        subject="Inline",
+        body="Plain fallback",
+        html_body='<p><img src="cid:business-card"></p>',
+        inline_images=[
+            client.InlineImage(
+                content_id="business-card",
+                filename="business_card.png",
+                content_type="image/png",
+                data=b"\x89PNG\r\n\x1a\nimage-bytes",
+            )
+        ],
+    )
+
+    decoded = base64.urlsafe_b64decode(raw.encode("ascii"))
+    msg = message_from_bytes(decoded, policy=policy.default)
+    assert msg.is_multipart()
+
+    html = msg.get_body(preferencelist=("html",))
+    assert html is not None
+    assert 'src="cid:business-card"' in html.get_content()
+
+    image_parts = [part for part in msg.walk() if part.get_content_type().startswith("image/")]
+    assert len(image_parts) == 1
+    image = image_parts[0]
+    assert image.get_content_type() == "image/png"
+    assert image["Content-ID"] == "<business-card>"
+    assert image.get_content_disposition() == "inline"
+    assert image.get_filename() == "business_card.png"
+    assert image.get_content() == b"\x89PNG\r\n\x1a\nimage-bytes"
+
+
 def test_credentials_delegate_to_sender_with_gmail_send_scope():
     from text_automation.accounts.gmail import client
 
@@ -227,82 +290,3 @@ def test_smoke_helper_can_filter_to_one_franchise():
     ]
     mock_send.assert_called_once()
     assert mock_send.call_args.kwargs["sender_email"] == "hodgesfl@tutoringclub.com"
-
-
-def test_direct_inquiry_body_without_booking_url_uses_no_link_fallback():
-    from text_automation.accounts.gmail import client
-
-    body = client.build_jacksonville_hodges_direct_inquiry_body(
-        parent_first_name="alex",
-        student_first_name="jordan",
-        booking_url="",
-    )
-
-    assert body == (
-        "Hi Alex,\n\n"
-        "Thanks so much for reaching out to Tutoring Club about Jordan! I'm looking forward to learning more about what support would be most helpful.\n\n"
-        "Please reply with a few times that work for a quick 15-minute call, and I'll confirm a time with you.\n\n"
-        "Talk soon,\n"
-        "Michele Tanner\n"
-        "Tutoring Club"
-    )
-
-
-def test_direct_inquiry_body_with_booking_url_includes_link():
-    from text_automation.accounts.gmail import client
-
-    body = client.build_jacksonville_hodges_direct_inquiry_body(
-        parent_first_name="alex",
-        student_first_name="",
-        booking_url="https://calendar.example/jax",
-    )
-
-    assert body == (
-        "Hi Alex,\n\n"
-        "Thanks so much for reaching out to Tutoring Club about your student! Please use the link below to book a quick 15-minute call with me so we can figure out the best next step for your child.\n\n"
-        "https://calendar.example/jax\n\n"
-        "Feel free to reply to this email with any questions.\n\n"
-        "Talk soon,\n"
-        "Michele Tanner\n"
-        "Tutoring Club"
-    )
-
-
-def test_direct_inquiry_helper_uses_franchise_sender_subject_and_recipient():
-    from text_automation.accounts.gmail import client
-    from text_automation.config import Franchise
-
-    class FakeConfig:
-        franchises = (
-            Franchise(
-                62,
-                "Tutoring Club of Jacksonville",
-                "",
-                "",
-                "jacksonvillefl@tutoringclub.com",
-                "America/New_York",
-                direct_inquiry_booking_url="https://calendar.example/jax",
-            ),
-            Franchise(95, "Hodges", "", "", "hodgesfl@tutoringclub.com", "America/New_York"),
-        )
-
-    with patch("text_automation.accounts.gmail.client.load_config", return_value=FakeConfig()):
-        with patch("text_automation.accounts.gmail.client.send_email", return_value={"id": "email-id"}) as mock_send:
-            result = client.send_jacksonville_hodges_direct_inquiry_email(
-                parent_first_name="alex",
-                student_first_name="jordan",
-                recipient_email="alex@example.com",
-                franchise_id=62,
-            )
-
-    assert result == {
-        "franchise_id": 62,
-        "sender_email": "jacksonvillefl@tutoringclub.com",
-        "recipient_email": "alex@example.com",
-        "result": {"id": "email-id"},
-    }
-    mock_send.assert_called_once()
-    assert mock_send.call_args.kwargs["sender_email"] == "jacksonvillefl@tutoringclub.com"
-    assert mock_send.call_args.kwargs["recipients"] == ["alex@example.com"]
-    assert mock_send.call_args.kwargs["subject"] == "Thanks for contacting tutoring club!"
-    assert "https://calendar.example/jax" in mock_send.call_args.kwargs["body"]

@@ -4,9 +4,9 @@ import os
 import requests
 from datetime import datetime, timezone
 
-from ..accounts.gmail import send_jacksonville_hodges_direct_inquiry_email
 from ..accounts.quo import send_payload as send_to_quo
 from ..config import load_config
+from ..direct_inquiry.email import send_jacksonville_hodges_direct_inquiry_email
 from ..direct_inquiry.utils import format_grade_phrase
 from ..direct_inquiry.business_hours import localize_timestamp
 from ..direct_inquiry.parser import extract_sent_utc  # optional reference if needed
