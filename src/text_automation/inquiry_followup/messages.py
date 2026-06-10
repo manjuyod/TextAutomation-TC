@@ -6,6 +6,9 @@ from zoneinfo import ZoneInfo
 from ..config import load_config
 
 
+JUNE_ADDENDUM = "We're offering free assessments for the rest of June."
+
+
 def _title_case(value: str) -> str:
     return " ".join(
         (w if w.lower() == "and" else w.capitalize()) for w in (value or "").split() if w
@@ -34,6 +37,20 @@ def _greeting(franchise_id: int, contact: str = "", now_utc: datetime | None = N
     if 12 <= hour < 17:
         return f"Good afternoon{suffix}"
     return f"Good evening{suffix}"
+
+
+def _is_june(franchise_id: int | None, now_utc: datetime | None = None) -> bool:
+    now = now_utc or datetime.now(timezone.utc)
+    if franchise_id is not None:
+        try:
+            return now.astimezone(ZoneInfo(_franchise_timezone(franchise_id))).month == 6
+        except Exception:
+            pass
+
+    try:
+        return now.astimezone().month == 6
+    except Exception:
+        return datetime.now().month == 6
 
 
 def _franchise_location(franchise_id: int) -> str:
@@ -68,10 +85,9 @@ def build_message(
     phrase = f" for {student_name}" if student_name else ""
     salutation = f"Hey {contact_name}," if contact_name else "Hello,"
 
-    base = (
-        f"{salutation} We haven't spoken in a while. Would you still be interested in some tutoring{phrase}? "
-        "If this is something that interests you, I'd be happy to have a conversation."
-    )
+    question = f"{salutation} We haven't spoken in a while. Would you still be interested in some tutoring{phrase}? "
+    closing = "If this is something that interests you, I'd be happy to have a conversation."
+    base = f"{question}{closing}"
 
     if summer and franchise_id is not None:
         location = _franchise_location(franchise_id)
@@ -83,6 +99,9 @@ def build_message(
             "preview next year's courses, or tackle SAT prep. It's also a fantastic way to keep their minds active and engaged (and give them a productive break from screen time!).\n\n"
             "Let me know if you'd like to grab a spot on our calendar. Hope you're having a great week!"
         )
+
+    if not summer and _is_june(franchise_id, now_utc):
+        return f"{question}{JUNE_ADDENDUM} {closing}"
 
     return base
 

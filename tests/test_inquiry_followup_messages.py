@@ -15,6 +15,8 @@ from text_automation.inquiry_followup.messages import build_message
 
 
 class TestInquiryFollowupMessageCopy(unittest.TestCase):
+    JUNE_ADDENDUM = "We're offering free assessments for the rest of June."
+
     def test_standard_copy_uses_expected_phrase_and_student_phrase(self):
         msg = build_message(
             contact_first="alex",
@@ -27,6 +29,33 @@ class TestInquiryFollowupMessageCopy(unittest.TestCase):
             msg,
         )
         self.assertIn("If this is something that interests you, I'd be happy to have a conversation.", msg)
+
+    def test_standard_copy_in_june_adds_free_assessment_addendum(self):
+        now = datetime(2026, 6, 10, 19, 0, tzinfo=timezone.utc)  # 12:00 in America/Los_Angeles
+        msg = build_message(
+            contact_first="Sam",
+            student_first="Kai",
+            franchise_id=49,
+            now_utc=now,
+        )
+
+        self.assertEqual(
+            "Hey Sam, We haven't spoken in a while. Would you still be interested in some tutoring for Kai? "
+            "We're offering free assessments for the rest of June. "
+            "If this is something that interests you, I'd be happy to have a conversation.",
+            msg,
+        )
+
+    def test_standard_copy_outside_june_omits_free_assessment_addendum(self):
+        now = datetime(2026, 7, 1, 19, 0, tzinfo=timezone.utc)  # 12:00 in America/Los_Angeles
+        msg = build_message(
+            contact_first="Sam",
+            student_first="Kai",
+            franchise_id=49,
+            now_utc=now,
+        )
+
+        self.assertNotIn(self.JUNE_ADDENDUM, msg)
 
     def test_standard_copy_without_student_has_base_phrase_only(self):
         msg = build_message(contact_first="Sam", student_first=None, franchise_id=87)
@@ -97,6 +126,18 @@ class TestInquiryFollowupMessageCopy(unittest.TestCase):
         )
 
         self.assertIn("Good afternoon,", msg)
+
+    def test_summer_copy_in_june_does_not_add_standard_june_addendum(self):
+        now = datetime(2026, 6, 10, 19, 0, tzinfo=timezone.utc)  # 12:00 in America/Los_Angeles
+        msg = build_message(
+            contact_first="Sam",
+            student_first="Kai",
+            franchise_id=49,
+            summer=True,
+            now_utc=now,
+        )
+
+        self.assertNotIn(self.JUNE_ADDENDUM, msg)
 
 
 if __name__ == "__main__":
