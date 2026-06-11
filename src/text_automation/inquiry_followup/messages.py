@@ -84,8 +84,11 @@ def build_message(
 
     phrase = f" for {student_name}" if student_name else ""
     salutation = f"Hey {contact_name}," if contact_name else "Hello,"
-
-    question = f"{salutation} We haven't spoken in a while. Would you still be interested in some tutoring{phrase}? "
+    location = _franchise_location(franchise_id or 0)
+    question = (
+        f"{salutation} This is the {location}. We haven't spoken in a while. "
+        f"Would you still be interested in some tutoring{phrase}? "
+    )
     closing = "If this is something that interests you, I'd be happy to have a conversation."
     base = f"{question}{closing}"
 
@@ -104,4 +107,3 @@ def build_message(
         return f"{question}{JUNE_ADDENDUM} {closing}"
 
     return base
-
